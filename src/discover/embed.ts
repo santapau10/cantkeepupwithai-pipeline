@@ -1,8 +1,9 @@
 // Anthropic doesn't offer a first-party embeddings endpoint. Voyage AI is
 // their recommended partner for this — https://docs.voyageai.com/docs/embeddings.
-// Model name/pricing below are NOT re-verified here; check Voyage's docs
-// before relying on the default.
-const DEFAULT_MODEL = process.env.VOYAGE_EMBEDDING_MODEL ?? "voyage-3.5-lite";
+// voyage-4-lite: $0.02/1M tokens after the first 200M tokens/account, which
+// are free — checked against docs.voyageai.com/docs/pricing. At this
+// pipeline's volume (a few hundred titles/day) that free tier lasts years.
+const DEFAULT_MODEL = process.env.VOYAGE_EMBEDDING_MODEL ?? "voyage-4-lite";
 const BATCH_SIZE = 100; // conservative — check Voyage's current per-request limit before raising
 
 type VoyageResponse = { data: { embedding: number[]; index: number }[] };

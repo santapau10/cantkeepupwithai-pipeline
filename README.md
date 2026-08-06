@@ -101,7 +101,7 @@ npm run dev aggregate  # mention counts + Δ week, printed as a table
 |---|---|---|
 | Reddit ingest | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_USER_AGENT` | Create a "script" app at [reddit.com/prefs/apps](https://www.reddit.com/prefs/apps) |
 | `synthesize`, `discover` (labeling) | `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) |
-| `group` (called by `synthesize`), `discover` (embeddings) | `VOYAGE_API_KEY` | [dash.voyageai.com](https://dash.voyageai.com/) — also verify the default embedding model in `src/discover/embed.ts` against current Voyage docs |
+| `group` (called by `synthesize`), `discover` (embeddings) | `VOYAGE_API_KEY` | [dash.voyageai.com](https://dash.voyageai.com/) — `voyage-4-lite`, $0.02/1M tokens after the first 200M free/account (checked against docs.voyageai.com/docs/pricing) |
 | Higher GitHub rate limit | `GITHUB_TOKEN` (optional — works unauthenticated at 60 req/hr) | A classic PAT with no scopes |
 
 `synthesize` needs **both** `ANTHROPIC_API_KEY` and `VOYAGE_API_KEY` now —
