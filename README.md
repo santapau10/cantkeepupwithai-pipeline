@@ -13,6 +13,30 @@ Anthropic API keys), different deploy lifecycle than the web app, and — if it
 ever goes public — a natural home for source/taxonomy contributions via PR,
 the same model already used for the toolbox on the main site.
 
+## Trends vs digest sourcing
+
+Every `Source` has a `kind`: `community` (HN, Reddit, GitHub, technical blogs)
+or `news` (press/journalism RSS — TechCrunch, The Verge, Wired, Ars Technica,
+MIT Technology Review). The two feed different parts of the site:
+
+- **Trend radar** (`aggregate`) only counts mentions from `community` sources
+  — it measures what developers are actually discussing.
+- **Digest** (`group` → `synthesize`) only draws from `news` sources — it
+  reads like "here's what's being reported," separate from the radar.
+
+Both still go through the same taxonomy tagging step (`tag`) — the split is
+in which tagged posts each downstream stage is allowed to use, not in tagging
+itself. Add/move a source's kind in `src/config/sources.yaml`.
+
+> **Known gap, found by testing this live:** the current taxonomy's aliases
+> are developer jargon ("mcp server", "agent skill", "rag pipeline") — the
+> kind of thing GitHub/HN titles use, not how press outlets write. A live
+> run tagged 13 posts, all from GitHub/HN, zero from the 5 news feeds. The
+> digest will come up empty until `taxonomy.yaml` also has softer,
+> press-style aliases (product/company names like "ChatGPT", "Anthropic",
+> "Claude", "Gemini", "AI agent") — not implemented yet, flagging it here
+> rather than silently shipping an empty digest.
+
 ## Pipeline stages
 
 Daily (`npm run dev all`):

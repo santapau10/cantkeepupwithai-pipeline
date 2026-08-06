@@ -16,8 +16,11 @@ const MAX_SAMPLE_POST_IDS = 10; // capped for the human reviewer
  */
 export async function discoverNewTrends() {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  // Community sources only — same reasoning as the trend radar itself
+  // (aggregate/snapshot.ts): new *trends* come from what developers are
+  // discussing, not from press coverage.
   const untagged = await prisma.rawPost.findMany({
-    where: { postedAt: { gte: since }, mentions: { none: {} } },
+    where: { postedAt: { gte: since }, mentions: { none: {} }, source: { kind: "community" } },
     select: { id: true, title: true },
   });
 

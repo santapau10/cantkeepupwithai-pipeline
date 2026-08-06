@@ -51,6 +51,7 @@ async function getAccessToken(): Promise<string> {
 /** One instance per subreddit — matches the "one Source row per subreddit" shape in sources.yaml. */
 export class RedditConnector implements SourceConnector {
   type = "reddit";
+  kind = "community" as const;
 
   constructor(public subreddit: string) {}
 

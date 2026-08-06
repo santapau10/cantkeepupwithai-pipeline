@@ -1,9 +1,14 @@
-# Which subreddits and blogs to poll. HN and GitHub don't need a list here —
+# Which subreddits and feeds to poll. HN and GitHub don't need a list here —
 # they're queried by search/trending, not by a fixed set of destinations.
+#
+# `kind` splits where each source's posts end up:
+#   community -> feeds the trend radar (mention counts)
+#   news      -> feeds the digest (daily story synthesis)
+# See README § Trends vs digest sourcing.
 #
 # To propose a new source: add it here and open a PR.
 
-reddit:
+reddit: # always kind: community
   - LocalLLaMA
   - ClaudeAI
   - OpenAI
@@ -16,10 +21,8 @@ reddit:
   - webdev
   - AI_Agents
 
-# Starter set — not the full ~62 implied by the site copy. Filling this out
-# is its own curation pass; verify each feed URL before enabling it (feed
-# paths change, and a few of these are placeholders to confirm).
-rss:
+# Technical/community blogs — same kind as HN/Reddit/GitHub, feeds trends.
+rss_community:
   - name: "Simon Willison's Blog"
     url: "https://simonwillison.net/atom/everything/"
   - name: "GitHub Blog"
@@ -31,3 +34,19 @@ rss:
   #   url: "https://huggingface.co/blog/feed.xml"
   # - name: "Latent Space"
   #   url: "https://www.latent.space/feed"
+
+# Press/journalism — feeds the digest, not the trend radar. These are
+# general-tech feeds (not AI-only) because the taxonomy match step already
+# filters down to what's AI-relevant — no need to find an AI-specific feed
+# per outlet. Verify each URL before enabling; not re-checked today.
+rss_news:
+  - name: "TechCrunch"
+    url: "https://techcrunch.com/feed/"
+  - name: "The Verge"
+    url: "https://www.theverge.com/rss/index.xml"
+  - name: "Wired"
+    url: "https://www.wired.com/feed/rss"
+  - name: "Ars Technica"
+    url: "https://arstechnica.com/feed/"
+  - name: "MIT Technology Review"
+    url: "https://www.technologyreview.com/feed/"

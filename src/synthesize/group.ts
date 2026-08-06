@@ -10,13 +10,17 @@ export type PostGroup = {
  * Deterministic grouping: which posts belong in the same story is decided
  * by shared trend tag + recency + a score floor — no model call. The LLM
  * only writes prose from groups that are already decided.
+ *
+ * News sources only (press/journalism RSS feeds) — the digest is meant to
+ * read like "here's what's being reported", separate from the trend radar's
+ * community mention counts. See aggregate/snapshot.ts for the other half.
  */
 export async function groupTodaysTopStories(opts: { maxGroups?: number; maxPostsPerGroup?: number } = {}) {
   const { maxGroups = 5, maxPostsPerGroup = 8 } = opts;
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
   const mentions = await prisma.postTrendMention.findMany({
-    where: { post: { postedAt: { gte: since } } },
+    where: { post: { postedAt: { gte: since }, source: { kind: "news" } } },
     include: {
       post: { include: { source: { select: { name: true } } } },
       trend: { select: { name: true, tag: true } },

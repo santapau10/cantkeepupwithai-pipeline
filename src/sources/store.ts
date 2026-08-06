@@ -7,9 +7,10 @@ export type IngestResult = { sourceName: string; fetched: number; stored: number
 export async function ingestConnector(connector: SourceConnector): Promise<IngestResult> {
   const source = await prisma.source.upsert({
     where: { name: connector.name },
-    update: { enabled: true },
+    update: { enabled: true, kind: connector.kind },
     create: {
       type: connector.type,
+      kind: connector.kind,
       name: connector.name,
       config: JSON.stringify({}),
       enabled: true,

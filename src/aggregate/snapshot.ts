@@ -18,12 +18,16 @@ export type TrendSummary = {
 /**
  * Pure aggregation — SQL/JS grouping over already-tagged mentions.
  * No model call: this is what feeds TrendSnapshot on the main app.
+ *
+ * Community sources only (HN, Reddit, GitHub, community blogs) — the radar
+ * measures what developers are actually discussing, not what the press is
+ * covering. News sources feed the digest instead; see synthesize/group.ts.
  */
 export async function computeTrendSnapshots(days = 30): Promise<TrendSummary[]> {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
   const mentions = await prisma.postTrendMention.findMany({
-    where: { post: { postedAt: { gte: since } } },
+    where: { post: { postedAt: { gte: since }, source: { kind: "community" } } },
     include: { post: { select: { postedAt: true } }, trend: { select: { name: true, tag: true } } },
   });
 

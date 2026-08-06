@@ -20,6 +20,7 @@ type AlgoliaHit = {
 export class HackerNewsConnector implements SourceConnector {
   type = "hn";
   name = "Hacker News";
+  kind = "community" as const;
 
   async fetchRecent(): Promise<NormalizedPost[]> {
     const since = Math.floor(Date.now() / 1000) - 48 * 60 * 60; // last 48h

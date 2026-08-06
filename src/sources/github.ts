@@ -19,6 +19,7 @@ const TOPICS = ["llm", "ai-agents", "mcp", "rag", "llmops"];
 export class GitHubConnector implements SourceConnector {
   type = "github";
   name = "GitHub";
+  kind = "community" as const;
 
   private headers(): HeadersInit {
     const headers: HeadersInit = { Accept: "application/vnd.github+json" };

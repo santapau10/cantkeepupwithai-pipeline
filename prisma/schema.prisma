@@ -13,6 +13,7 @@ datasource db {
 model Source {
   id        String    @id @default(uuid())
   type      String    // "hn" | "reddit" | "github" | "rss"
+  kind      String    @default("community") // "community" | "news" — see README § Trends vs digest sourcing
   name      String    @unique // e.g. "r/LocalLLaMA", "Simon Willison's Blog"
   config    String    // JSON blob: subreddit name, feed url, search query, etc.
   enabled   Boolean   @default(true)

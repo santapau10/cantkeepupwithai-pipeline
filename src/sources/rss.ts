@@ -1,5 +1,5 @@
 import Parser from "rss-parser";
-import type { NormalizedPost, SourceConnector } from "./types.js";
+import type { NormalizedPost, SourceConnector, SourceKind } from "./types.js";
 
 const parser = new Parser();
 
@@ -9,6 +9,7 @@ export class RssConnector implements SourceConnector {
   constructor(
     public name: string,
     private feedUrl: string,
+    public kind: SourceKind = "community",
   ) {}
 
   async fetchRecent(): Promise<NormalizedPost[]> {

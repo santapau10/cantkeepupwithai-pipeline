@@ -11,9 +11,12 @@ import type { SourceConnector } from "./types.js";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sourcesYamlPath = path.join(here, "../config/sources.yaml");
 
+type FeedEntry = { name: string; url: string };
+
 type SourcesConfig = {
   reddit: string[];
-  rss: { name: string; url: string }[];
+  rss_community: FeedEntry[];
+  rss_news: FeedEntry[];
 };
 
 export function loadSourcesConfig(): SourcesConfig {
@@ -29,8 +32,11 @@ export function buildConnectors(): SourceConnector[] {
   for (const subreddit of config.reddit) {
     connectors.push(new RedditConnector(subreddit));
   }
-  for (const feed of config.rss) {
-    connectors.push(new RssConnector(feed.name, feed.url));
+  for (const feed of config.rss_community) {
+    connectors.push(new RssConnector(feed.name, feed.url, "community"));
+  }
+  for (const feed of config.rss_news) {
+    connectors.push(new RssConnector(feed.name, feed.url, "news"));
   }
 
   return connectors;
