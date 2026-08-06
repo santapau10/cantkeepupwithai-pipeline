@@ -9,79 +9,142 @@
 # Matching is case-insensitive substring matching against post titles
 # (see src/taxonomy/match.ts) — keep aliases specific enough to avoid
 # false positives (e.g. "agent" alone is too broad; "agent skill" isn't).
+#
+# Aliases are grouped by register, not just listed flat:
+#   dev jargon   -> what HN/Reddit/GitHub titles actually say
+#   press phrasing -> softer wording general tech press uses when covering
+#                     the same thing (added so the news-sourced digest has
+#                     something to match against — see README's "known gap")
+# We deliberately did NOT add bare company/product names (ChatGPT, OpenAI,
+# Anthropic...) as aliases on narrow trends like "Chatbot wrapper startups" —
+# that would misattribute unrelated coverage of those companies to a specific
+# trend just because the name appears. Aliases stay scoped to what the trend
+# actually is.
 
 trends:
   - name: "Agent skills & harnesses"
     tag: technique
     aliases:
+      # dev jargon
       - "agent skill"
       - "agent harness"
       - "skill file"
       - "claude skill"
+      # press phrasing
+      - "ai agent skills"
+      - "custom ai agent"
+      - "agentic coding tool"
+      - "coding agent"
 
   - name: "MCP servers in production"
     tag: protocol
     aliases:
+      # dev jargon
       - "mcp server"
       - "model context protocol"
       - "mcp client"
+      # press phrasing
+      - "ai connector protocol"
+      - "ai tool protocol"
+      - "mcp standard"
 
   - name: "Multi-agent orchestration"
     tag: workflow
     aliases:
+      # dev jargon
       - "multi-agent"
       - "multiagent"
       - "subagent"
       - "sub-agent"
       - "agent orchestration"
+      # press phrasing
+      - "ai agents work together"
+      - "team of ai agents"
+      - "swarm of agents"
+      - "orchestrating ai agents"
 
   - name: "Spec-driven development"
     tag: workflow
     aliases:
+      # dev jargon
       - "spec-driven"
       - "spec driven development"
       - "write specs not prompts"
+      # press phrasing
+      - "specification-first coding"
+      - "spec-first ai coding"
 
   - name: "Local models on NPUs"
     tag: infra
     aliases:
+      # dev jargon
       - "npu inference"
       - "on-device model"
       - "local llm"
       - "self-hosted model"
+      # press phrasing
+      - "on-device ai"
+      - "ai chip"
+      - "neural processing unit"
+      - "run ai on your device"
+      - "run ai locally"
 
   - name: "Context window management"
     tag: technique
     aliases:
+      # dev jargon
       - "context window"
       - "context pruning"
       - "context compaction"
       - "prompt caching"
+      # press phrasing
+      - "long context ai"
+      - "ai memory limits"
 
   - name: "AI code review bots"
     tag: tool
     aliases:
+      # dev jargon
       - "ai code review"
       - "pr review bot"
       - "review agent"
+      # press phrasing
+      - "ai coding assistant reviews"
+      - "automated code review ai"
+      - "ai reviews pull requests"
 
   - name: "Prompt-engineering courses"
     tag: meta
     aliases:
+      # dev jargon
       - "prompt engineering course"
       - "prompt engineering certification"
+      # press phrasing
+      - "learn prompt engineering"
+      - "prompt engineering training"
 
   - name: "RAG-only architectures"
     tag: technique
     aliases:
+      # dev jargon
       - "rag pipeline"
       - "retrieval augmented generation"
       - "vector database"
       - "vector db"
+      # press phrasing
+      - "rag system"
+      - "retrieval-based ai"
+      - "grounding ai answers"
+      - "grounding ai responses"
 
   - name: "Chatbot wrapper startups"
     tag: meta
     aliases:
+      # dev jargon
       - "chatgpt wrapper"
       - "gpt wrapper"
       - "thin wrapper startup"
+      # press phrasing
+      - "ai wrapper startup"
+      - "built on top of chatgpt"
+      - "thin ai wrapper"
