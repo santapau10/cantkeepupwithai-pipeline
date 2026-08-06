@@ -15,6 +15,8 @@ the same model already used for the toolbox on the main site.
 
 ## Pipeline stages
 
+Daily (`npm run dev all`):
+
 ```
 ingest → tag → aggregate → group → synthesize → (review) → export
 ```
@@ -25,13 +27,25 @@ ingest → tag → aggregate → group → synthesize → (review) → export
 | **tag** | Match post titles against `src/config/taxonomy.yaml` (name + aliases per trend) | No |
 | **aggregate** | Count mentions per trend per day, compute week-over-week change | No |
 | **group** | Cluster today's top posts by shared trend tag + recency + score | No |
-| **synthesize** | Write headline / summary / why-it-matters for each group | **Yes — the only model call in the pipeline** (Claude Sonnet 5, structured output) |
+| **synthesize** | Write headline / summary / why-it-matters for each group | **Yes** — one Claude Sonnet 5 call/day, structured output |
 | **export** | Write the computed trend snapshots + approved story drafts out, ready to sync into the main app | No |
 
-A weekly embedding-based cluster-discovery pass (to catch trends the taxonomy
-doesn't know about yet) is designed but not implemented in this first pass —
-see the plan discussion this repo came out of. `ClusterCandidate` is already
-in the schema for when that lands.
+Weekly, separate from `all` on purpose — this is not a daily cost, and its
+output needs a human decision before it affects anything:
+
+```
+discover → review (human) → manual taxonomy.yaml PR
+```
+
+| Stage | What it does | Touches an LLM? |
+|---|---|---|
+| **discover** | Embeds titles of posts that matched *no* taxonomy trend in the last 7 days (Voyage AI), clusters them by cosine similarity (plain code, no model), then asks Haiku 4.5 to name/tag clusters of 3+ posts and judge whether each is a real trend or noise | **Yes** — one embedding batch + one Haiku 4.5 call per candidate cluster |
+| **review** | Prints pending `ClusterCandidate` rows for a human to eyeball | No |
+| *(manual)* | Approve via `tsx scripts/approve.ts <id>`, then hand-add the trend to `taxonomy.yaml` with real aliases and open a PR | No — approving a candidate never auto-edits the taxonomy |
+
+Discovery only ever *proposes*. Nothing it finds affects the radar until a
+human adds it to `taxonomy.yaml` — same trust boundary as the rest of the
+site's transparency story.
 
 ## Setup
 
@@ -56,7 +70,8 @@ npm run dev aggregate  # mention counts + Δ week, printed as a table
 | Stage | Needs | Get it from |
 |---|---|---|
 | Reddit ingest | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_USER_AGENT` | Create a "script" app at [reddit.com/prefs/apps](https://www.reddit.com/prefs/apps) |
-| `synthesize` | `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) |
+| `synthesize`, `discover` (labeling) | `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) |
+| `discover` (embeddings) | `VOYAGE_API_KEY` | [dash.voyageai.com](https://dash.voyageai.com/) — also verify the default embedding model in `src/discover/embed.ts` against current Voyage docs |
 | Higher GitHub rate limit | `GITHUB_TOKEN` (optional — works unauthenticated at 60 req/hr) | A classic PAT with no scopes |
 
 Without Reddit credentials, `ingest` still runs — it logs each Reddit
@@ -65,7 +80,12 @@ subreddit as skipped rather than failing the whole run.
 ```bash
 npm run dev synthesize   # needs ANTHROPIC_API_KEY
 npm run dev export       # writes data/export/{trends,stories}-<date>.json
-npm run dev all          # runs every stage in order
+npm run dev all          # runs the daily stages in order
+
+npm run dev discover     # weekly — needs VOYAGE_API_KEY + ANTHROPIC_API_KEY
+npm run dev review       # lists pending cluster candidates
+tsx scripts/approve.ts <id>          # approve
+tsx scripts/approve.ts <id> reject   # reject
 ```
 
 ## Syncing into the main app

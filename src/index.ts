@@ -5,6 +5,7 @@ import { tagUntaggedPosts } from "./taxonomy/match.js";
 import { computeTrendSnapshots } from "./aggregate/snapshot.js";
 import { synthesizeDigest } from "./synthesize/synthesize.js";
 import { exportForMainApp } from "./sync/export.js";
+import { discoverNewTrends, listPendingCandidates } from "./discover/discover.js";
 
 async function logRun(stage: string, fn: () => Promise<Record<string, unknown>>) {
   const start = Date.now();
@@ -51,6 +52,29 @@ async function exportStage() {
   return exportForMainApp();
 }
 
+async function discover() {
+  return discoverNewTrends();
+}
+
+async function review() {
+  const candidates = await listPendingCandidates();
+  if (candidates.length === 0) {
+    console.log("No pending cluster candidates.");
+    return { pending: 0 };
+  }
+  for (const c of candidates) {
+    console.log(`\n— ${c.suggestedName} [${c.suggestedTag}] (${c.clusterSize} posts)`);
+    console.log(`  ${c.rationale}`);
+    console.log(`  approve: tsx scripts/approve.ts ${c.id}   reject: tsx scripts/approve.ts ${c.id} reject`);
+  }
+  return { pending: candidates.length };
+}
+
+const STAGES = ["ingest", "tag", "aggregate", "synthesize", "export"] as const;
+// discover/review are weekly and manual-review steps — deliberately not part of "all",
+// which is meant to run daily.
+const ALL_COMMANDS = [...STAGES, "discover", "review", "all"];
+
 async function main() {
   const command = process.argv[2] ?? "all";
 
@@ -59,9 +83,11 @@ async function main() {
   if (command === "aggregate" || command === "all") await logRun("aggregate", aggregate);
   if (command === "synthesize" || command === "all") await logRun("synthesize", synthesize);
   if (command === "export" || command === "all") await logRun("export", exportStage);
+  if (command === "discover") await logRun("discover", discover);
+  if (command === "review") await review();
 
-  if (!["ingest", "tag", "aggregate", "synthesize", "export", "all"].includes(command)) {
-    console.error(`Unknown command "${command}". Use: ingest | tag | aggregate | synthesize | export | all`);
+  if (!ALL_COMMANDS.includes(command as (typeof ALL_COMMANDS)[number])) {
+    console.error(`Unknown command "${command}". Use: ${ALL_COMMANDS.join(" | ")}`);
     process.exit(1);
   }
 

@@ -11,7 +11,9 @@
     "prisma:push": "prisma db push",
     "ingest": "tsx src/index.ts ingest",
     "tag": "tsx src/index.ts tag",
-    "synthesize": "tsx src/index.ts synthesize"
+    "synthesize": "tsx src/index.ts synthesize",
+    "discover": "tsx src/index.ts discover",
+    "review": "tsx src/index.ts review"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

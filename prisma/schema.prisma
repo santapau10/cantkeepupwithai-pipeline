@@ -65,11 +65,14 @@ model PostTrendMention {
 }
 
 model ClusterCandidate {
-  id             String   @id @default(uuid())
-  samplePostIds  String   // JSON array
-  suggestedName  String
-  status         String   @default("pending") // pending | approved | rejected
-  createdAt      DateTime @default(now())
+  id            String   @id @default(uuid())
+  samplePostIds String   // JSON array
+  suggestedName String
+  suggestedTag  String   @default("") // technique | protocol | workflow | infra | tool | meta
+  rationale     String   @default("") // why the model thinks this is a distinct trend
+  clusterSize   Int      @default(0)  // total untagged posts in the cluster, not just the sample
+  status        String   @default("pending") // pending | approved | rejected
+  createdAt     DateTime @default(now())
 
   @@map("cluster_candidates")
 }
