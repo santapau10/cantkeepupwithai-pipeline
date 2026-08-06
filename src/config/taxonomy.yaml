@@ -1,0 +1,87 @@
+# The trend dictionary. Every mention count on the radar traces back to a
+# match against this file — nothing here is inferred by a model.
+#
+# To propose a new trend or better aliases: edit this file and open a PR,
+# same as a toolbox entry on the main site. `name` and `tag` should match
+# what's already seeded on cantkeepupwithai.com where the trend already
+# exists there; new trends get picked up on the next ingest run.
+#
+# Matching is case-insensitive substring matching against post titles
+# (see src/taxonomy/match.ts) — keep aliases specific enough to avoid
+# false positives (e.g. "agent" alone is too broad; "agent skill" isn't).
+
+trends:
+  - name: "Agent skills & harnesses"
+    tag: technique
+    aliases:
+      - "agent skill"
+      - "agent harness"
+      - "skill file"
+      - "claude skill"
+
+  - name: "MCP servers in production"
+    tag: protocol
+    aliases:
+      - "mcp server"
+      - "model context protocol"
+      - "mcp client"
+
+  - name: "Multi-agent orchestration"
+    tag: workflow
+    aliases:
+      - "multi-agent"
+      - "multiagent"
+      - "subagent"
+      - "sub-agent"
+      - "agent orchestration"
+
+  - name: "Spec-driven development"
+    tag: workflow
+    aliases:
+      - "spec-driven"
+      - "spec driven development"
+      - "write specs not prompts"
+
+  - name: "Local models on NPUs"
+    tag: infra
+    aliases:
+      - "npu inference"
+      - "on-device model"
+      - "local llm"
+      - "self-hosted model"
+
+  - name: "Context window management"
+    tag: technique
+    aliases:
+      - "context window"
+      - "context pruning"
+      - "context compaction"
+      - "prompt caching"
+
+  - name: "AI code review bots"
+    tag: tool
+    aliases:
+      - "ai code review"
+      - "pr review bot"
+      - "review agent"
+
+  - name: "Prompt-engineering courses"
+    tag: meta
+    aliases:
+      - "prompt engineering course"
+      - "prompt engineering certification"
+
+  - name: "RAG-only architectures"
+    tag: technique
+    aliases:
+      - "rag pipeline"
+      - "retrieval augmented generation"
+      - "vector database"
+      - "vector db"
+
+  - name: "Chatbot wrapper startups"
+    tag: meta
+    aliases:
+      - "chatgpt wrapper"
+      - "gpt wrapper"
+      - "thin wrapper startup"

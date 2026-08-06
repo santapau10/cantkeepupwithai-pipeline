@@ -1,0 +1,33 @@
+# Which subreddits and blogs to poll. HN and GitHub don't need a list here —
+# they're queried by search/trending, not by a fixed set of destinations.
+#
+# To propose a new source: add it here and open a PR.
+
+reddit:
+  - LocalLLaMA
+  - ClaudeAI
+  - OpenAI
+  - ChatGPT
+  - singularity
+  - MachineLearning
+  - artificial
+  - programming
+  - devops
+  - webdev
+  - AI_Agents
+
+# Starter set — not the full ~62 implied by the site copy. Filling this out
+# is its own curation pass; verify each feed URL before enabling it (feed
+# paths change, and a few of these are placeholders to confirm).
+rss:
+  - name: "Simon Willison's Blog"
+    url: "https://simonwillison.net/atom/everything/"
+  - name: "GitHub Blog"
+    url: "https://github.blog/feed/"
+  # TODO: verify current feed URLs before enabling —
+  # - name: "Anthropic Blog"
+  #   url: "https://www.anthropic.com/rss.xml"
+  # - name: "Hugging Face Blog"
+  #   url: "https://huggingface.co/blog/feed.xml"
+  # - name: "Latent Space"
+  #   url: "https://www.latent.space/feed"

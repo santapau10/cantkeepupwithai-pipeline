@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // SQLite for now, same reasoning as the main app repo: zero external
+  // services to get the pipeline running. Swap to postgresql + a real
+  // DATABASE_URL when this needs to run on a schedule somewhere.
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Source {
+  id        String    @id @default(uuid())
+  type      String    // "hn" | "reddit" | "github" | "rss"
+  name      String    @unique // e.g. "r/LocalLLaMA", "Simon Willison's Blog"
+  config    String    // JSON blob: subreddit name, feed url, search query, etc.
+  enabled   Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  posts     RawPost[]
+
+  @@map("sources")
+}
+
+model RawPost {
+  id          String              @id @default(uuid())
+  source      Source              @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  sourceId    String
+  externalId  String              // the source's own id for this post (dedup key)
+  title       String
+  url         String
+  author      String?
+  score       Int                 @default(0)
+  commentCount Int                @default(0)
+  postedAt    DateTime
+  fetchedAt   DateTime            @default(now())
+  mentions    PostTrendMention[]
+
+  @@unique([sourceId, externalId])
+  @@map("raw_posts")
+}
+
+model TrendDefinition {
+  id        String             @id @default(uuid())
+  // Mirrors taxonomy.yaml — upserted from the YAML file on every run, so
+  // the YAML (reviewed via PR) is the source of truth, not this table.
+  name      String             @unique
+  tag       String
+  aliases   String             // JSON array of match strings
+  mentions  PostTrendMention[]
+
+  @@map("trend_definitions")
+}
+
+model PostTrendMention {
+  id             String          @id @default(uuid())
+  post           RawPost         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId         String
+  trend          TrendDefinition @relation(fields: [trendId], references: [id], onDelete: Cascade)
+  trendId        String
+  matchedKeyword String
+
+  @@unique([postId, trendId])
+  @@map("post_trend_mentions")
+}
+
+model ClusterCandidate {
+  id             String   @id @default(uuid())
+  samplePostIds  String   // JSON array
+  suggestedName  String
+  status         String   @default("pending") // pending | approved | rejected
+  createdAt      DateTime @default(now())
+
+  @@map("cluster_candidates")
+}
+
+model StoryDraft {
+  id            String   @id @default(uuid())
+  digestDate    DateTime
+  headline      String
+  summary       String
+  whyItMatters  String
+  sourcePostIds String   // JSON array
+  status        String   @default("draft") // draft | approved | published
+  createdAt     DateTime @default(now())
+
+  @@map("story_drafts")
+}
+
+model PipelineRun {
+  id              String   @id @default(uuid())
+  stage           String   // "ingest" | "tag" | "aggregate" | "discover" | "synthesize"
+  ranAt           DateTime @default(now())
+  postsProcessed  Int      @default(0)
+  errors          Int      @default(0)
+  detail          String?  // JSON blob, per-stage free-form detail
+
+  @@map("pipeline_runs")
+}
