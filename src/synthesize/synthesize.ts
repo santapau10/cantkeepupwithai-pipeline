@@ -3,8 +3,9 @@ import { prisma } from "../lib/prisma.js";
 import { groupTodaysTopStories, type PostGroup } from "./group.js";
 
 const SYSTEM_PROMPT = `You are the editorial synthesis step for cantkeepupwithai.com, a daily digest of what \
-the AI world is talking about. You are given pre-grouped clusters of posts — the grouping (which posts belong \
-together) has already been decided deterministically by shared trend tag; your only job is to write the story.
+the AI world is talking about. You are given pre-grouped clusters of news posts — the grouping (which posts \
+cover the same story) has already been decided deterministically, by embedding similarity between headlines; \
+your only job is to write the story, including naming what it's actually about.
 
 For each group you choose to cover, write:
 - headline: a single sentence, specific, no clickbait
@@ -12,7 +13,8 @@ For each group you choose to cover, write:
 - whyItMatters: one sentence on why this matters, not a restatement of the summary
 
 Ground every claim in the provided posts. Do not invent details not present in the titles/sources given. \
-Pick the 3-5 most substantive groups — skip a group if it doesn't have enough signal for a real story.`;
+Pick the 3-5 most substantive groups — skip a group if it doesn't have enough signal for a real story, or if \
+outlets are covering genuinely different things that just clustered by surface wording.`;
 
 const OUTPUT_SCHEMA = {
   type: "object",
@@ -22,13 +24,12 @@ const OUTPUT_SCHEMA = {
       items: {
         type: "object",
         properties: {
-          trendName: { type: "string" },
           headline: { type: "string" },
           summary: { type: "string" },
           whyItMatters: { type: "string" },
           sourcePostIds: { type: "array", items: { type: "string" } },
         },
-        required: ["trendName", "headline", "summary", "whyItMatters", "sourcePostIds"],
+        required: ["headline", "summary", "whyItMatters", "sourcePostIds"],
         additionalProperties: false,
       },
     },
@@ -39,7 +40,6 @@ const OUTPUT_SCHEMA = {
 
 type SynthesisOutput = {
   stories: {
-    trendName: string;
     headline: string;
     summary: string;
     whyItMatters: string;
@@ -50,9 +50,9 @@ type SynthesisOutput = {
 function formatGroupsForPrompt(groups: PostGroup[]) {
   return groups
     .map(
-      (g) =>
-        `## ${g.trendName} (${g.tag})\n` +
-        g.posts.map((p) => `- [${p.id}] (${p.sourceName}, score ${p.score}) ${p.title} — ${p.url}`).join("\n"),
+      (g, i) =>
+        `## Story candidate ${i + 1}\n` +
+        g.posts.map((p) => `- [${p.id}] (${p.sourceName}) ${p.title} — ${p.url}`).join("\n"),
     )
     .join("\n\n");
 }
@@ -61,7 +61,7 @@ function formatGroupsForPrompt(groups: PostGroup[]) {
 export async function synthesizeDigest() {
   const groups = await groupTodaysTopStories();
   if (groups.length === 0) {
-    return { storiesCreated: 0, note: "No grouped posts in the last 24h to synthesize from." };
+    return { storiesCreated: 0, note: "No clustered news posts to synthesize from." };
   }
 
   const client = new Anthropic(); // reads ANTHROPIC_API_KEY from env
