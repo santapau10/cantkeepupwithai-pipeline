@@ -162,35 +162,17 @@ plus whichever source connector credentials are enabled).
 `gh workflow run`) works today for either one and is the recommended way to
 test a run before arming the schedule.
 
-## Admin API
+## The `/admin` page lives in the other repo
 
-`src/admin/` is a small separate Express app — not part of the CLI/batch
-flow above — that backs the `/admin` page on cantkeepupwithai.com (that
-page lives in the frontend repo, `frontend/src/pages/Admin.tsx`). It reads
-and updates `ClusterCandidate` rows straight from this pipeline's database:
-
-- `GET /admin/candidates` — pending candidates from `discover`, hydrated
-  with their sample post titles/URLs
-- `POST /admin/candidates/:id/approve` / `.../reject` — flips `status`,
-  same as `tsx scripts/approve.ts` does today. Still never touches
-  `taxonomy.yaml` — adding an approved trend for real stays a manual PR.
-
-Protected by a single HTTP Basic Auth user (`ADMIN_USERNAME`/
-`ADMIN_PASSWORD`) — this is a personal admin surface, not multi-tenant.
-CORS is locked to one allowed origin (`ADMIN_CORS_ORIGIN`), not a wildcard,
-since these endpoints mutate review state.
-
-```bash
-npm run admin:dev   # local dev, listens on :4100 (ADMIN_PORT to override)
-```
-
-**Deploying it:** this needs its own Vercel project pointed at this repo
-(root directory `.`) — separate from the GitHub Actions batch workflows,
-which don't run a server. `vercel.json` at the repo root explicitly builds
-`src/admin/app.ts` as the entrypoint. Set `DATABASE_URL`, `ADMIN_USERNAME`,
-`ADMIN_PASSWORD`, and `ADMIN_CORS_ORIGIN` (the frontend's real origin, e.g.
-`https://cantkeepupwithai.com`) as env vars on that Vercel project, then
-set `VITE_ADMIN_API_URL` on the frontend project to wherever this deploys.
+cantkeepupwithai.com/admin (reviewing `discover` candidates — approve/reject)
+is served by the main `cantkeepupwithai` repo's backend, not this one. That
+backend reads/writes `ClusterCandidate` and `RawPost` straight from this
+pipeline's own database via a second, pipeline-scoped Prisma client
+(`backend/prisma/pipeline/schema.prisma`, `PIPELINE_DATABASE_URL` — the
+same connection string as this repo's `DATABASE_URL`) rather than this
+repo running its own separate API. See that repo for the actual routes
+and deployment. Approving a candidate there still only flips `status` —
+adding the trend to `taxonomy.yaml` for real stays a manual PR either way.
 
 ## Sources
 
