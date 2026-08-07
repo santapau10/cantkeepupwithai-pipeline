@@ -3,7 +3,6 @@ import { buildConnectors } from "./sources/registry.js";
 import { ingestConnector } from "./sources/store.js";
 import { tagUntaggedPosts } from "./taxonomy/match.js";
 import { computeTrendSnapshots } from "./aggregate/snapshot.js";
-import { synthesizeDigest } from "./synthesize/synthesize.js";
 import { exportForMainApp } from "./sync/export.js";
 import { discoverNewTrends, listPendingCandidates } from "./discover/discover.js";
 
@@ -44,10 +43,6 @@ async function aggregate() {
   return { trendCount: snapshots.length };
 }
 
-async function synthesize() {
-  return synthesizeDigest();
-}
-
 async function exportStage() {
   return exportForMainApp();
 }
@@ -70,7 +65,7 @@ async function review() {
   return { pending: candidates.length };
 }
 
-const STAGES = ["ingest", "tag", "aggregate", "synthesize", "export"] as const;
+const STAGES = ["ingest", "tag", "aggregate", "export"] as const;
 // discover/review are weekly and manual-review steps — deliberately not part of "all",
 // which is meant to run daily.
 const ALL_COMMANDS = [...STAGES, "discover", "review", "all"];
@@ -81,7 +76,6 @@ async function main() {
   if (command === "ingest" || command === "all") await logRun("ingest", ingest);
   if (command === "tag" || command === "all") await logRun("tag", tag);
   if (command === "aggregate" || command === "all") await logRun("aggregate", aggregate);
-  if (command === "synthesize" || command === "all") await logRun("synthesize", synthesize);
   if (command === "export" || command === "all") await logRun("export", exportStage);
   if (command === "discover") await logRun("discover", discover);
   if (command === "review") await review();

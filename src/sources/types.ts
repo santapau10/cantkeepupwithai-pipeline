@@ -16,8 +16,8 @@ export interface SourceConnector {
   /** Human label for this specific source instance, e.g. "r/LocalLLaMA". */
   name: string;
   /**
-   * "community" feeds the trend radar (mention counts); "news" feeds the
-   * digest (story synthesis). See README § Trends vs digest sourcing.
+   * Metadata only — both kinds feed the trend radar the same way. See
+   * README § "No more Digest — everything feeds the trend radar".
    */
   kind: SourceKind;
   fetchRecent(): Promise<NormalizedPost[]>;

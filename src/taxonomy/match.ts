@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import yaml from "js-yaml";
 import { prisma } from "../lib/prisma.js";
+import { embedFallbackTag } from "./semanticMatch.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const taxonomyYamlPath = path.join(here, "../config/taxonomy.yaml");
@@ -33,9 +34,7 @@ export async function syncTaxonomy() {
  * trend's aliases against the post title. No model call — this is what
  * feeds the mention counts.
  */
-export async function tagUntaggedPosts() {
-  await syncTaxonomy();
-
+async function keywordTag() {
   const trendDefs = await prisma.trendDefinition.findMany();
   const compiled = trendDefs.map((t) => ({
     id: t.id,
@@ -63,4 +62,24 @@ export async function tagUntaggedPosts() {
   }
 
   return { postsScanned: posts.length, mentionsCreated: tagged };
+}
+
+/**
+ * Full `tag` stage: deterministic alias matching first, then an embedding
+ * fallback pass (see semanticMatch.ts) over whatever's still untagged —
+ * catches press coverage that describes a trend without using its dev
+ * jargon aliases.
+ */
+export async function tagUntaggedPosts() {
+  await syncTaxonomy();
+
+  const keyword = await keywordTag();
+  const semantic = await embedFallbackTag();
+
+  return {
+    postsScanned: keyword.postsScanned,
+    mentionsCreated: keyword.mentionsCreated + semantic.mentionsCreated,
+    keyword,
+    semantic,
+  };
 }

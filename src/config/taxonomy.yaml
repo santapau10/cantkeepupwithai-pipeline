@@ -13,8 +13,10 @@
 # Aliases are grouped by register, not just listed flat:
 #   dev jargon   -> what HN/Reddit/GitHub titles actually say
 #   press phrasing -> softer wording general tech press uses when covering
-#                     the same thing (added so the news-sourced digest has
-#                     something to match against — see README's "known gap")
+#                     the same thing, so news-source mentions have a chance
+#                     of matching too (they feed the radar directly now —
+#                     see README's "Two-pass tagging" section for the
+#                     embedding fallback that also helps here)
 # We deliberately did NOT add bare company/product names (ChatGPT, OpenAI,
 # Anthropic...) as aliases on narrow trends like "Chatbot wrapper startups" —
 # that would misattribute unrelated coverage of those companies to a specific

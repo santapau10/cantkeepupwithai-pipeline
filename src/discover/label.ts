@@ -33,7 +33,7 @@ export type ClusterLabel = {
 
 /**
  * Cheap classification task, not prose synthesis — Haiku 4.5 is the right
- * cost/quality tier here, unlike the digest-writing call which uses Sonnet 5.
+ * cost/quality tier here.
  */
 export async function labelCluster(titles: string[]): Promise<ClusterLabel> {
   const client = new Anthropic(); // reads ANTHROPIC_API_KEY from env

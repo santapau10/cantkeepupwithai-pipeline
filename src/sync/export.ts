@@ -17,8 +17,7 @@ type SyncPayload = {
     history: { day: string; mentions: number }[];
     references: { sourceName: string; title: string; url: string; postedAt: string; snippet?: string | null; upvotes?: number | null }[];
   }[];
-  digest: { issueDate: string; stories: { headline: string; summary: string; whyItMatters: string; sources: { sourceName: string; threadCount: number; url: string }[] }[] } | null;
-  pipelineRun: { sourcesChecked: number; postsRead: number; storiesProduced: number; readingMinutesSaved: number };
+  pipelineRun: { sourcesChecked: number; postsRead: number };
 };
 
 async function buildReferences(trendName: string) {
@@ -36,36 +35,6 @@ async function buildReferences(trendName: string) {
     postedAt: m.post.postedAt.toISOString(),
     upvotes: m.post.score || null,
   }));
-}
-
-async function buildDigest(forDate: Date) {
-  const start = new Date(forDate);
-  start.setUTCHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setUTCDate(end.getUTCDate() + 1);
-
-  const stories = await prisma.storyDraft.findMany({
-    where: { status: "approved", digestDate: { gte: start, lt: end } },
-  });
-
-  if (stories.length === 0) return null;
-
-  const digestStories = await Promise.all(
-    stories.map(async (s) => {
-      const postIds: string[] = JSON.parse(s.sourcePostIds);
-      const posts = postIds.length
-        ? await prisma.rawPost.findMany({ where: { id: { in: postIds } }, include: { source: true } })
-        : [];
-      return {
-        headline: s.headline,
-        summary: s.summary,
-        whyItMatters: s.whyItMatters,
-        sources: posts.map((p) => ({ sourceName: p.source.name, threadCount: p.commentCount, url: p.url })),
-      };
-    }),
-  );
-
-  return { issueDate: start.toISOString().slice(0, 10), stories: digestStories };
 }
 
 /**
@@ -88,8 +57,6 @@ export async function exportForMainApp() {
     })),
   );
 
-  const digest = await buildDigest(new Date());
-
   const [sourcesChecked, postsRead] = await Promise.all([
     prisma.source.count({ where: { enabled: true } }),
     prisma.rawPost.count(),
@@ -97,13 +64,7 @@ export async function exportForMainApp() {
 
   const payload: SyncPayload = {
     trends,
-    digest,
-    pipelineRun: {
-      sourcesChecked,
-      postsRead,
-      storiesProduced: digest?.stories.length ?? 0,
-      readingMinutesSaved: (digest?.stories.length ?? 0) * 4,
-    },
+    pipelineRun: { sourcesChecked, postsRead },
   };
 
   const today = new Date().toISOString().slice(0, 10);
@@ -113,7 +74,7 @@ export async function exportForMainApp() {
   const syncUrl = process.env.WEB_SYNC_URL;
   const syncKey = process.env.WEB_SYNC_API_KEY;
   if (!syncUrl || !syncKey) {
-    return { payloadPath, trendCount: trends.length, storyCount: digest?.stories.length ?? 0, synced: false, reason: "WEB_SYNC_URL/WEB_SYNC_API_KEY not set" };
+    return { payloadPath, trendCount: trends.length, synced: false, reason: "WEB_SYNC_URL/WEB_SYNC_API_KEY not set" };
   }
 
   const res = await fetch(`${syncUrl}/api/pipeline/sync`, {
@@ -128,5 +89,5 @@ export async function exportForMainApp() {
   }
 
   const result = await res.json();
-  return { payloadPath, trendCount: trends.length, storyCount: digest?.stories.length ?? 0, synced: true, result };
+  return { payloadPath, trendCount: trends.length, synced: true, result };
 }

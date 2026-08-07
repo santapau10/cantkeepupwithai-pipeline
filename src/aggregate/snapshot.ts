@@ -19,15 +19,17 @@ export type TrendSummary = {
  * Pure aggregation — SQL/JS grouping over already-tagged mentions.
  * No model call: this is what feeds TrendSnapshot on the main app.
  *
- * Community sources only (HN, Reddit, GitHub, community blogs) — the radar
- * measures what developers are actually discussing, not what the press is
- * covering. News sources feed the digest instead; see synthesize/group.ts.
+ * All sources count equally now (community and news alike) — there is no
+ * separate digest to keep news mentions out of anymore. In practice, press
+ * titles rarely match the dev-jargon-heavy taxonomy aliases (see
+ * taxonomy.yaml's "press phrasing" note), so this mostly just stops
+ * excluding the news mentions that do match.
  */
 export async function computeTrendSnapshots(days = 30): Promise<TrendSummary[]> {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
   const mentions = await prisma.postTrendMention.findMany({
-    where: { post: { postedAt: { gte: since }, source: { kind: "community" } } },
+    where: { post: { postedAt: { gte: since } } },
     include: { post: { select: { postedAt: true } }, trend: { select: { name: true, tag: true } } },
   });
 
