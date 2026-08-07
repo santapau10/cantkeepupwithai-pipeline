@@ -1,10 +1,9 @@
 # Which subreddits and feeds to poll. HN and GitHub don't need a list here —
 # they're queried by search/trending, not by a fixed set of destinations.
 #
-# `kind` splits where each source's posts end up:
-#   community -> feeds the trend radar (mention counts)
-#   news      -> feeds the digest (daily story synthesis)
-# See README § Trends vs digest sourcing.
+# `kind` (community | news) is metadata only now — every source feeds the
+# trend radar the same way regardless of kind. See README § "No more
+# Digest — everything feeds the trend radar".
 #
 # To propose a new source: add it here and open a PR.
 
@@ -21,6 +20,35 @@ reddit: # always kind: community
   - webdev
   - AI_Agents
 
+# Fixed list of accounts to track (not search) — always kind: community.
+# Pay-per-use: 5 posts/account/day (API floor) + one batched username lookup
+# per run. Split across x_rotation_groups days (registry.ts) instead of
+# polling all 20 daily — one account doesn't post enough for daily reads to
+# be worth it. With 2 groups: 10 accounts/day x 5 = 50 reads/day (~$7.50/mo),
+# each account checked every other day.
+x_rotation_groups: 2
+x_accounts:
+  - simonw
+  - mitchellh
+  - antirez
+  - steipete
+  - GergelyOrosz
+  - ThePrimeagen
+  - t3dotgg
+  - levelsio
+  - mckaywrigley
+  - nutlope
+  - rauchg
+  - amasad
+  - tobi
+  - hamelhusain
+  - jxnlco
+  - eugeneyan
+  - sh_reya
+  - goodside
+  - emollick
+  - danshipper
+
 # Technical/community blogs — same kind as HN/Reddit/GitHub, feeds trends.
 rss_community:
   - name: "Simon Willison's Blog"
@@ -35,10 +63,11 @@ rss_community:
   # - name: "Latent Space"
   #   url: "https://www.latent.space/feed"
 
-# Press/journalism — feeds the digest, not the trend radar. These are
-# general-tech feeds (not AI-only) because the taxonomy match step already
-# filters down to what's AI-relevant — no need to find an AI-specific feed
-# per outlet. Verify each URL before enabling; not re-checked today.
+# Press/journalism — feeds the trend radar same as everything else now.
+# These are general-tech feeds (not AI-only) because the taxonomy match step
+# already filters down to what's AI-relevant — no need to find an
+# AI-specific feed per outlet. Verify each URL before enabling; not
+# re-checked today.
 rss_news:
   - name: "TechCrunch"
     url: "https://techcrunch.com/feed/"
