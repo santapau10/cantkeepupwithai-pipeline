@@ -8,3 +8,4 @@ build/
 prisma/dev.db
 prisma/dev.db-journal
 data/export/
+.lavish/
