@@ -4,9 +4,12 @@ import { cosineSimilarity } from "../discover/cluster.js";
 
 // Conservative on purpose — a false match here silently inflates a public
 // trend's mention count, unlike a bad digest cluster (which was at least
-// visible editorial output someone could catch). Tune after checking a few
-// days of real `~semantic:<score>` values in matchedKeyword.
-const SIMILARITY_THRESHOLD = 0.84;
+// visible editorial output someone could catch). 0.7 calibrated against a
+// real batch of post titles on 2026-08-07 — comparing a full title against
+// a short synthetic "name + aliases" text scores lower than discover's
+// title-vs-title 0.82, so this isn't directly comparable to that number.
+// Re-check `~semantic:<score>` values periodically and adjust.
+const SIMILARITY_THRESHOLD = 0.7;
 
 /**
  * Second-pass, non-deterministic tagging: for posts the alias match in
