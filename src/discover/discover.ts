@@ -4,7 +4,14 @@ import { greedyCluster } from "./cluster.js";
 import { labelCluster } from "./label.js";
 
 const MIN_CLUSTER_SIZE = 3; // below this, almost always noise, not a trend
-const SIMILARITY_THRESHOLD = 0.82;
+// Lowered from 0.82 after checking real pairs on 2026-08-07: near-duplicate
+// coverage of the same event scored 0.87-0.92, but some legitimate
+// same-topic-different-wording pairs (e.g. two posts both about model
+// routing, phrased very differently) sat around 0.73-0.76 and never had a
+// chance to reach MIN_CLUSTER_SIZE. Most of the noise in that range turned
+// out to be link-only X posts (see x.ts's hasMeaningfulText filter), not a
+// reason to keep the threshold high.
+const SIMILARITY_THRESHOLD = 0.75;
 const MAX_SAMPLE_TITLES = 15; // capped context sent to the labeling call
 const MAX_SAMPLE_POST_IDS = 10; // capped for the human reviewer
 

@@ -14,6 +14,19 @@ type XTweet = {
 // accounts cost one $0.01×20 lookup instead of twenty separate ones.
 let userIdCache: Map<string, string> | null = null;
 
+const T_CO_URL = /https:\/\/t\.co\/\w+/g;
+const MIN_MEANINGFUL_TEXT_LENGTH = 10; // below this, it's an image/link-only tweet with nothing to embed or match on
+
+// A media-only or link-only tweet's `text` is just the auto-appended t.co
+// short link with nothing else — e.g. "https://t.co/kSLaJKa9AG". That
+// leftover URL string isn't a title, and clustering on it in `discover`
+// produces false "trend" matches between unrelated tweets that just share
+// the t.co domain (found empirically, see README history). Strip t.co
+// links and check what real text is left.
+function hasMeaningfulText(text: string): boolean {
+  return text.replace(T_CO_URL, "").trim().length >= MIN_MEANINGFUL_TEXT_LENGTH;
+}
+
 async function resolveUserIds(usernames: string[], token: string): Promise<Map<string, string>> {
   if (userIdCache) return userIdCache;
 
@@ -72,14 +85,16 @@ export class XConnector implements SourceConnector {
     if (!res.ok) throw new Error(`X fetch failed for @${this.username}: ${res.status} ${res.statusText}`);
 
     const json = (await res.json()) as { data?: XTweet[] };
-    return (json.data ?? []).map((t) => ({
-      externalId: t.id,
-      title: t.text,
-      url: `https://x.com/${this.username}/status/${t.id}`,
-      author: this.username,
-      score: t.public_metrics?.like_count ?? 0,
-      commentCount: t.public_metrics?.reply_count ?? 0,
-      postedAt: new Date(t.created_at),
-    }));
+    return (json.data ?? [])
+      .filter((t) => hasMeaningfulText(t.text))
+      .map((t) => ({
+        externalId: t.id,
+        title: t.text,
+        url: `https://x.com/${this.username}/status/${t.id}`,
+        author: this.username,
+        score: t.public_metrics?.like_count ?? 0,
+        commentCount: t.public_metrics?.reply_count ?? 0,
+        postedAt: new Date(t.created_at),
+      }));
   }
 }
