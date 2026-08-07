@@ -3,10 +3,11 @@ generator client {
 }
 
 datasource db {
-  // SQLite for now, same reasoning as the main app repo: zero external
-  // services to get the pipeline running. Swap to postgresql + a real
-  // DATABASE_URL when this needs to run on a schedule somewhere.
-  provider = "sqlite"
+  // Neon Postgres — a separate project from the main cantkeepupwithai app's
+  // database. This one is the pipeline's own working state (RawPost, Source,
+  // ClusterCandidate, StoryDraft...); the two only ever talk via the sync API
+  // call in src/sync/export.ts, never a shared database.
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

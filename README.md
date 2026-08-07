@@ -84,7 +84,9 @@ Requires Node 20+.
 ```bash
 npm install
 cp .env.example .env
-npx prisma db push   # creates prisma/dev.db (SQLite, same pattern as the main app)
+# edit .env: paste your Neon project's connection string into DATABASE_URL —
+# a project of its own, separate from the main cantkeepupwithai app's database
+npx prisma db push
 ```
 
 ## What runs right now, with zero credentials
@@ -124,11 +126,30 @@ tsx scripts/approve.ts <id> reject   # reject
 
 ## Syncing into the main app
 
-The main `cantkeepupwithai` repo doesn't have a write endpoint for
-trends/digests yet — that's the next cross-repo piece. Until then, `export`
-writes the exact shapes it would send as JSON files under `data/export/`, so
-wiring it up later is a matter of pointing that stage at an admin API call
-instead of a file write, not a redesign.
+`export` POSTs its trend/digest payload to the main `cantkeepupwithai` repo's
+`POST /api/pipeline/sync`, authenticated with a shared secret
+(`WEB_SYNC_API_KEY` here must match `PIPELINE_API_KEY` in that repo's
+`backend/.env`). It also still writes the same payload to
+`data/export/sync-<date>.json` regardless of whether the sync succeeds —
+useful for debugging a run without the web app up. Set `WEB_SYNC_URL` /
+`WEB_SYNC_API_KEY` in `.env` (see `.env.example`); leave either blank to skip
+syncing and only write the local file.
+
+Two GitHub Actions workflows exist for this (`.github/workflows/`): `daily.yml`
+runs `ingest → tag → aggregate → synthesize → export` every day, `discover.yml`
+runs the weekly-ish new-trend discovery pass every ~3 days. The main app is
+now deployed (`https://cantkeepupwithai-backend.vercel.app`), so `WEB_SYNC_URL`
+is no longer blocked on that.
+
+**Both schedules are deliberately commented out in the workflow files** —
+each run spends real Anthropic + Voyage API usage, so nothing runs
+automatically until that's a conscious choice. Uncomment the `schedule:`
+block in either file to arm it, once repo secrets are set (`DATABASE_URL` for
+this pipeline's own Neon project, `ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`,
+`WEB_SYNC_URL`/`WEB_SYNC_API_KEY`, plus whichever source connector
+credentials are enabled). `workflow_dispatch` (manual trigger, from the
+GitHub Actions UI or `gh workflow run`) works today for either one and is
+the recommended way to test a run before arming the schedule.
 
 ## Sources
 

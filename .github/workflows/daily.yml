@@ -1,0 +1,50 @@
+name: Daily ingest + synthesize + sync
+
+# WEB_SYNC_URL now points at a real deployed backend (cantkeepupwithai-backend
+# on Vercel), so that blocker is gone — but the schedule below is deliberately
+# commented out until someone explicitly decides to let this run for real
+# (each run costs real Anthropic + Voyage API usage). Needs repo secrets set
+# first either way: DATABASE_URL (the pipeline's own Neon project),
+# ANTHROPIC_API_KEY, VOYAGE_API_KEY, whichever source connector credentials
+# are enabled in src/config/sources.yaml, and WEB_SYNC_URL/WEB_SYNC_API_KEY.
+#
+# To arm the daily schedule: uncomment the `schedule` block below. Until then,
+# `workflow_dispatch` still works for an explicit one-off manual run from the
+# GitHub Actions UI/CLI — nothing here fires on its own.
+on:
+  # schedule:
+  #   - cron: "0 8 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - run: npx prisma db push
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - run: npm run dev all
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
+          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+          REDDIT_USER_AGENT: ${{ secrets.REDDIT_USER_AGENT }}
+          # Named GITHUB_TOKEN_PAT as the repo secret (not GITHUB_TOKEN) to avoid
+          # colliding with the Actions-reserved automatic GITHUB_TOKEN — mapped
+          # here to the env var name the pipeline code actually reads.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN_PAT }}
+          X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+          WEB_SYNC_URL: ${{ secrets.WEB_SYNC_URL }}
+          WEB_SYNC_API_KEY: ${{ secrets.WEB_SYNC_API_KEY }}

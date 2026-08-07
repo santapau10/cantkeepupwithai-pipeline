@@ -1,0 +1,42 @@
+name: Discover new trends
+
+# Would run every 3 days once armed. GitHub Actions cron has no native
+# "every N days" unit, so this steps the day-of-month field (*/3 -> 1, 4, 7,
+# 10...); the gap can shrink to 1 day at month boundaries (e.g. the 31st into
+# the 1st), which is fine for a non-time-critical discovery pass.
+#
+# The schedule below is deliberately commented out until someone explicitly
+# decides to let this run for real (each run costs real Anthropic + Voyage
+# API usage). Needs repo secrets set first either way: DATABASE_URL (the
+# pipeline's own Neon project), ANTHROPIC_API_KEY, VOYAGE_API_KEY.
+#
+# To arm it: uncomment the `schedule` block below. Until then,
+# `workflow_dispatch` still works for an explicit one-off manual run from the
+# GitHub Actions UI/CLI — nothing here fires on its own.
+on:
+  # schedule:
+  #   - cron: "0 9 */3 * *"
+  workflow_dispatch: {}
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - run: npx prisma db push
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - run: npm run discover
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
