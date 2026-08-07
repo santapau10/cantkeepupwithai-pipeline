@@ -27,7 +27,8 @@ async function ingest() {
   for (const connector of connectors) {
     const result = await ingestConnector(connector);
     results.push(result);
-    const status = result.error ? `SKIPPED (${result.error})` : `${result.stored} new / ${result.fetched} fetched`;
+    const dupeNote = result.duplicatesSkipped ? `, ${result.duplicatesSkipped} cross-source dupes skipped` : "";
+    const status = result.error ? `SKIPPED (${result.error})` : `${result.stored} new / ${result.fetched} fetched${dupeNote}`;
     console.log(`  ${connector.name}: ${status}`);
   }
   return { results };
