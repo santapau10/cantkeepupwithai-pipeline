@@ -1,21 +1,17 @@
 name: Daily ingest + tag + sync
 
-# WEB_SYNC_URL now points at a real deployed backend (cantkeepupwithai-backend
-# on Vercel), so that blocker is gone — but the schedule below is deliberately
-# commented out until someone explicitly decides to let this run for real
-# (each run costs real Voyage API usage — no Anthropic call on this path
-# anymore, the Digest/synthesize stage was removed; ANTHROPIC_API_KEY is only
-# needed by discover.yml now). Needs repo secrets set first either way:
-# DATABASE_URL (the pipeline's own Neon project), VOYAGE_API_KEY (used by the
-# semantic fallback tagging pass), whichever source connector credentials are
-# enabled in src/config/sources.yaml, and WEB_SYNC_URL/WEB_SYNC_API_KEY.
+# Armed 2026-08-07: runs daily at 08:00 UTC. Repo secrets are set
+# (DATABASE_URL, VOYAGE_API_KEY, X_BEARER_TOKEN, WEB_SYNC_URL/
+# WEB_SYNC_API_KEY — Reddit's aren't, ingest just skips that source) and the
+# full flow was verified end to end locally first. Each run costs real
+# Voyage (+ X, pay-per-use) API usage — no Anthropic call on this path,
+# only the weekly discover.yml uses that key.
 #
-# To arm the daily schedule: uncomment the `schedule` block below. Until then,
-# `workflow_dispatch` still works for an explicit one-off manual run from the
-# GitHub Actions UI/CLI — nothing here fires on its own.
+# `workflow_dispatch` still works too, for an explicit one-off manual run
+# from the GitHub Actions UI/CLI, independent of the schedule.
 on:
-  # schedule:
-  #   - cron: "0 8 * * *"
+  schedule:
+    - cron: "0 8 * * *"
   workflow_dispatch: {}
 
 jobs:
