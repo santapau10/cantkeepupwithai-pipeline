@@ -58,6 +58,7 @@ export async function discoverNewTrends() {
         samplePostIds: JSON.stringify(sampleIds),
         suggestedName: label.suggestedName,
         suggestedTag: label.suggestedTag,
+        suggestedAliases: JSON.stringify(label.suggestedAliases),
         rationale: label.rationale,
         clusterSize: cluster.memberIds.length,
         status: "pending",

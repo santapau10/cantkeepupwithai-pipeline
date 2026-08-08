@@ -1,0 +1,71 @@
+name: Apply approved discover candidate
+
+# Triggered by the web admin's approve button (POST to this workflow's
+# dispatch endpoint, candidate_id as input) — never runs on a schedule.
+# Appends the candidate's suggested name/tag/aliases to taxonomy.yaml,
+# commits+pushes that, then runs tag -> aggregate -> export so the new
+# trend picks up whatever's already sitting in the untagged backlog and
+# syncs to the web immediately, instead of waiting for the next daily.yml
+# run. See scripts/applyCandidate.ts for the taxonomy.yaml write itself —
+# kept as a plain script so it's runnable/testable locally too.
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_id:
+        description: "cluster_candidates.id to apply"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - run: npx prisma db push
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - run: npx tsx scripts/applyCandidate.ts "${{ inputs.candidate_id }}"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Only spent if this candidate predates suggestedAliases and needs
+          # aliases regenerated on the fly — see applyCandidate.ts.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Commit and push taxonomy.yaml
+        run: |
+          if git diff --quiet -- src/config/taxonomy.yaml; then
+            echo "No taxonomy.yaml change (candidate already applied, or not approved) — skipping commit."
+            exit 0
+          fi
+          git config user.name "cantkeepupwithai-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/config/taxonomy.yaml
+          git commit -m "Auto-add taxonomy entry for approved candidate ${{ inputs.candidate_id }}"
+          git push
+
+      - run: npm run dev tag
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
+
+      - run: npm run dev aggregate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - run: npm run dev export
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          WEB_SYNC_URL: ${{ secrets.WEB_SYNC_URL }}
+          WEB_SYNC_API_KEY: ${{ secrets.WEB_SYNC_API_KEY }}

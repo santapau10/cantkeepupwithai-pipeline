@@ -8,7 +8,16 @@ already decided — not your job to re-cluster), decide:
   small clusters are noise, not trends.
 - If it's real: a short trend name in the same style as existing entries (e.g. "Agent skills & harnesses",
   "MCP servers in production" — noun phrase, not a sentence), one tag from
-  [technique, protocol, workflow, infra, tool, meta], and a one-sentence rationale.
+  [technique, protocol, workflow, infra, tool, meta], a one-sentence rationale, and a list of match
+  aliases for future keyword tagging (see below).
+
+Aliases: case-insensitive substrings matched against future post titles — this is how every future mention
+of this trend gets counted, so precision matters more than recall. 4-8 aliases, grouped conceptually into
+"dev jargon" (what a technical post title would actually say) and "press phrasing" (softer wording general
+tech press might use for the same thing). Keep every alias specific enough that it wouldn't false-positive
+match an unrelated post — e.g. "agent" alone is too broad, "agent skill" isn't. Do not include bare
+company/product names (ChatGPT, OpenAI, Anthropic...) — that would misattribute unrelated coverage of that
+company to this trend just because the name appears.
 
 If it's not a coherent trend, set isRealTrend to false and leave the other fields empty.`;
 
@@ -19,8 +28,9 @@ const OUTPUT_SCHEMA = {
     suggestedName: { type: "string" },
     suggestedTag: { type: "string", enum: ["technique", "protocol", "workflow", "infra", "tool", "meta"] },
     rationale: { type: "string" },
+    suggestedAliases: { type: "array", items: { type: "string" } },
   },
-  required: ["isRealTrend", "suggestedName", "suggestedTag", "rationale"],
+  required: ["isRealTrend", "suggestedName", "suggestedTag", "rationale", "suggestedAliases"],
   additionalProperties: false,
 } as const;
 
@@ -29,6 +39,7 @@ export type ClusterLabel = {
   suggestedName: string;
   suggestedTag: string;
   rationale: string;
+  suggestedAliases: string[];
 };
 
 /**

@@ -67,14 +67,19 @@ model PostTrendMention {
 }
 
 model ClusterCandidate {
-  id            String   @id @default(uuid())
-  samplePostIds String   // JSON array
-  suggestedName String
-  suggestedTag  String   @default("") // technique | protocol | workflow | infra | tool | meta
-  rationale     String   @default("") // why the model thinks this is a distinct trend
-  clusterSize   Int      @default(0)  // total untagged posts in the cluster, not just the sample
-  status        String   @default("pending") // pending | approved | rejected
-  createdAt     DateTime @default(now())
+  id                String   @id @default(uuid())
+  samplePostIds     String   // JSON array
+  suggestedName     String
+  suggestedTag      String   @default("") // technique | protocol | workflow | infra | tool | meta
+  suggestedAliases  String   @default("[]") // JSON array — same shape as taxonomy.yaml's aliases,
+  // proposed by the same labeling call as suggestedName/suggestedTag/rationale. Only ever read by
+  // scripts/applyCandidate.ts once a human approves — same "propose, never auto-edit the taxonomy
+  // by itself" boundary as the rest of discover, just with the taxonomy.yaml write now automated
+  // once a human has clicked approve, instead of also being hand-typed.
+  rationale         String   @default("") // why the model thinks this is a distinct trend
+  clusterSize       Int      @default(0)  // total untagged posts in the cluster, not just the sample
+  status            String   @default("pending") // pending | approved | rejected
+  createdAt         DateTime @default(now())
 
   @@map("cluster_candidates")
 }
