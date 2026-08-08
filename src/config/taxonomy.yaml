@@ -209,3 +209,16 @@ trends:
       - "automate your business with ai"
       - "ai agent side hustle"
       - "ai agents for entrepreneurs"
+
+  # Auto-added from an approved discover candidate (cluster_candidates id 865e86dc-5ca3-4862-85e9-af0e20990c8e).
+  # Clear cluster around memory architectures for AI agents—from context graphs and recall layers to specific solutions like Mem0 and Tencent's systems—reflecting active work on solving agent context retention and long-term reasoning.
+  - name: "Agent memory systems & persistence"
+    tag: technique
+    aliases:
+      - "agent memory"
+      - "long-term memory agent"
+      - "agent context persistence"
+      - "memory layer"
+      - "agent recall"
+      - "persistent agent memory"
+      - "memory-efficient agent"
