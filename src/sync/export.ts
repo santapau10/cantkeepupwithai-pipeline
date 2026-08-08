@@ -7,7 +7,11 @@ import { computeTrendSnapshots } from "../aggregate/snapshot.js";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const exportDir = path.join(here, "../../data/export");
 
-const REFERENCES_PER_TREND = 5;
+// Two separate caps, one per selection criterion — the final reference set is
+// the deduplicated union of "top by score" and "top by recency", so a trend
+// can end up with anywhere from REFERENCES_PER_CRITERION (full overlap) up to
+// 2 * REFERENCES_PER_CRITERION (no overlap) references.
+const REFERENCES_PER_CRITERION = 5;
 
 type SyncPayload = {
   trends: {
@@ -21,12 +25,33 @@ type SyncPayload = {
 };
 
 async function buildReferences(trendName: string) {
-  const mentions = await prisma.postTrendMention.findMany({
-    where: { trend: { name: trendName } },
-    include: { post: { include: { source: true } } },
-    orderBy: { post: { score: "desc" } },
-    take: REFERENCES_PER_TREND,
-  });
+  const where = { trend: { name: trendName } };
+  const include = { post: { include: { source: true } } } as const;
+
+  const [byScore, byDate] = await Promise.all([
+    prisma.postTrendMention.findMany({
+      where,
+      include,
+      orderBy: { post: { score: "desc" } },
+      take: REFERENCES_PER_CRITERION,
+    }),
+    prisma.postTrendMention.findMany({
+      where,
+      include,
+      orderBy: { post: { postedAt: "desc" } },
+      take: REFERENCES_PER_CRITERION,
+    }),
+  ]);
+
+  // Union of both sets, deduped by post id — a post that ranks in both the
+  // top-by-score and top-by-date cuts should only appear once.
+  const seen = new Set<string>();
+  const mentions = [];
+  for (const m of [...byScore, ...byDate]) {
+    if (seen.has(m.post.id)) continue;
+    seen.add(m.post.id);
+    mentions.push(m);
+  }
 
   return mentions.map((m) => ({
     sourceName: m.post.source.name,
