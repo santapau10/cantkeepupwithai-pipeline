@@ -23,11 +23,13 @@ const MAX_SAMPLE_POST_IDS = 10; // capped for the human reviewer
  */
 export async function discoverNewTrends() {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  // Community sources only — same reasoning as the trend radar itself
-  // (aggregate/snapshot.ts): new *trends* come from what developers are
-  // discussing, not from press coverage.
+  // All sources, community and news alike — matches aggregate/snapshot.ts's
+  // "everything feeds the trend radar" behavior since Digest was removed.
+  // Kept community-only until then to keep genuinely vague press coverage
+  // out of clustering; MIN_CLUSTER_SIZE + labelCluster's skepticism are now
+  // what's expected to filter that noise instead.
   const untagged = await prisma.rawPost.findMany({
-    where: { postedAt: { gte: since }, mentions: { none: {} }, source: { kind: "community" } },
+    where: { postedAt: { gte: since }, mentions: { none: {} } },
     select: { id: true, title: true },
   });
 
