@@ -55,6 +55,18 @@ rss_community:
     url: "https://simonwillison.net/atom/everything/"
   - name: "GitHub Blog"
     url: "https://github.blog/feed/"
+  # Medium tag feeds (no auth needed, RssConnector handles these like any
+  # other feed). Picked the narrow dev-jargon tags, not the broad
+  # "artificial-intelligence"/"machine-learning" ones — those are dominated
+  # by generic explainer/listicle content that would just be noise against
+  # the taxonomy's specific aliases (same reasoning as taxonomy.yaml's
+  # "press phrasing" note).
+  - name: "Medium: LLM"
+    url: "https://medium.com/feed/tag/llm"
+  - name: "Medium: AI Agents"
+    url: "https://medium.com/feed/tag/ai-agents"
+  - name: "Medium: Large Language Models"
+    url: "https://medium.com/feed/tag/large-language-models"
   # TODO: verify current feed URLs before enabling —
   # - name: "Anthropic Blog"
   #   url: "https://www.anthropic.com/rss.xml"

@@ -7,6 +7,7 @@ import { GitHubConnector } from "./github.js";
 import { RedditConnector } from "./reddit.js";
 import { RssConnector } from "./rss.js";
 import { XConnector } from "./x.js";
+import { YouTubeConnector } from "./youtube.js";
 import type { SourceConnector } from "./types.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -44,7 +45,7 @@ function todaysRotation<T>(accounts: T[], groups: number): T[] {
 /** Every source the pipeline knows how to read from, HN/GitHub included. */
 export function buildConnectors(): SourceConnector[] {
   const config = loadSourcesConfig();
-  const connectors: SourceConnector[] = [new HackerNewsConnector(), new GitHubConnector()];
+  const connectors: SourceConnector[] = [new HackerNewsConnector(), new GitHubConnector(), new YouTubeConnector()];
 
   for (const subreddit of config.reddit) {
     connectors.push(new RedditConnector(subreddit));

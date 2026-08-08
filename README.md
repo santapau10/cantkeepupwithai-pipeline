@@ -61,7 +61,7 @@ ingest → tag → aggregate → export
 
 | Stage | What it does | Touches an LLM? |
 |---|---|---|
-| **ingest** | Pull raw posts from HN (Algolia API), GitHub (Search API), Reddit (OAuth API), X (v2 API), and RSS blogs | No |
+| **ingest** | Pull raw posts from HN (Algolia API), GitHub (Search API), YouTube (Data API v3 search), Reddit (OAuth API), X (v2 API), and RSS blogs (including Medium tag feeds) | No |
 | **tag** | Match post titles against `src/config/taxonomy.yaml` (name + aliases per trend), then an embedding fallback pass for what's still untagged | Embeddings only (fallback pass), no LLM call |
 | **aggregate** | Count mentions per trend per day (all sources), compute week-over-week change | No |
 | **export** | Write the computed trend snapshots out, ready to sync into the main app | No |
@@ -112,6 +112,7 @@ npm run dev aggregate  # mention counts + Δ week, printed as a table
 | `tag`'s embedding fallback, `discover` (embeddings) | `VOYAGE_API_KEY` | [dash.voyageai.com](https://dash.voyageai.com/) — `voyage-4-lite`, $0.02/1M tokens after the first 200M free/account (checked against docs.voyageai.com/docs/pricing) |
 | `discover` (labeling) | `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) — no longer needed on the daily path, only weekly `discover` |
 | Higher GitHub rate limit | `GITHUB_TOKEN` (optional — works unauthenticated at 60 req/hr) | A classic PAT with no scopes |
+| YouTube ingest | `YOUTUBE_API_KEY` | Free key from [console.cloud.google.com](https://console.cloud.google.com) — enable "YouTube Data API v3", then Credentials → Create Credentials → API key. Gated by a 10,000 units/day free quota (`search.list` = 100 units/call), not billing; this connector uses ~500/day |
 
 Without Reddit credentials, `ingest` still runs — it logs each Reddit
 subreddit as skipped rather than failing the whole run. Same for `tag`
