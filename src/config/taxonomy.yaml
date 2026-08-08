@@ -150,3 +150,62 @@ trends:
       - "ai wrapper startup"
       - "built on top of chatgpt"
       - "thin ai wrapper"
+
+  # The four below came out of the 2026-08-08 discover run (30-day backfill
+  # + a fresh discover pass), approved by a human, aliases hand-written from
+  # each cluster's real sample post titles — see cluster_candidates in the
+  # pipeline DB for the source clusters.
+
+  - name: "Agent evaluation & engineering patterns"
+    tag: workflow
+    aliases:
+      # dev jargon
+      - "agent evaluation"
+      - "agent eval"
+      - "evals for agents"
+      - "llm-as-judge"
+      - "agent benchmark"
+      # press phrasing
+      - "testing ai agents"
+      - "measuring ai agent performance"
+      - "ai agent benchmarking"
+
+  - name: "Agent memory & persistence"
+    tag: technique
+    aliases:
+      # dev jargon
+      - "agent memory"
+      - "long-term memory agent"
+      - "memory layer for agents"
+      - "context graph"
+      - "mem0"
+      # press phrasing
+      - "ai agent that remembers"
+      - "persistent memory ai agent"
+      - "ai agents forget"
+
+  - name: "Agent security & safe tool use"
+    tag: technique
+    aliases:
+      # dev jargon
+      - "agent security"
+      - "tool calling security"
+      - "prompt injection defense"
+      - "mcp security"
+      - "agent identity"
+      # press phrasing
+      - "securing ai agents"
+      - "ai agent vulnerabilities"
+      - "safe ai agent"
+
+  - name: "AI agents for business automation"
+    tag: workflow
+    aliases:
+      # dev jargon
+      - "ai automation agency"
+      - "ai agent workflow for business"
+      - "business automation agent"
+      # press phrasing
+      - "automate your business with ai"
+      - "ai agent side hustle"
+      - "ai agents for entrepreneurs"
