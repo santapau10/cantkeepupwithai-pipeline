@@ -1,4 +1,4 @@
-import type { NormalizedPost, SourceConnector } from "./types.js";
+import type { FetchOptions, NormalizedPost, SourceConnector } from "./types.js";
 
 type YouTubeSearchItem = {
   id: { videoId: string };
@@ -8,6 +8,8 @@ type YouTubeSearchItem = {
     publishedAt: string;
   };
 };
+
+type YouTubeSearchResponse = { items: YouTubeSearchItem[]; nextPageToken?: string };
 
 type YouTubeVideoStats = {
   id: string;
@@ -28,12 +30,21 @@ const DURATIONS = ["medium", "long"] as const;
 
 const WINDOW_DAYS = 14; // matches GitHubConnector's window
 
+// order=date + maxResults=25 only ever returns the 25 *most recent* matches
+// for a query — on a 30-day backfill window that's just the last day or two
+// again, not the whole month. Paginate on the backfill path to actually
+// spread across the window. Capped, not exhaustive: 5 queries * 2 durations
+// * up to 4 pages = 40 calls * 100 units = 4,000/10,000 daily quota, leaving
+// headroom for the stats call below and whatever the daily cron also runs
+// that day.
+const MAX_BACKFILL_PAGES = 4;
+
 export class YouTubeConnector implements SourceConnector {
   type = "youtube";
   name = "YouTube";
   kind = "community" as const;
 
-  async fetchRecent(): Promise<NormalizedPost[]> {
+  async fetchRecent(options?: FetchOptions): Promise<NormalizedPost[]> {
     const apiKey = process.env.YOUTUBE_API_KEY;
     if (!apiKey) {
       throw new Error(
@@ -42,25 +53,32 @@ export class YouTubeConnector implements SourceConnector {
       );
     }
 
-    const publishedAfter = new Date(Date.now() - WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    const publishedAfter = new Date(Date.now() - (options?.days ?? WINDOW_DAYS) * 24 * 60 * 60 * 1000).toISOString();
+    const maxPages = options?.days ? MAX_BACKFILL_PAGES : 1;
     const byId = new Map<string, YouTubeSearchItem>();
 
     for (const q of QUERIES) {
       for (const videoDuration of DURATIONS) {
-        const url =
-          `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&order=date` +
-          `&videoDuration=${videoDuration}&maxResults=25&publishedAfter=${publishedAfter}` +
-          `&q=${encodeURIComponent(q)}&key=${apiKey}`;
-        const res = await fetch(url);
-        if (!res.ok) {
-          // Rate limit / quota exhausted hits here first — skip this query
-          // rather than failing the whole connector, same pattern as
-          // GitHubConnector's per-topic try.
-          console.warn(`YouTube search failed for q="${q}" duration=${videoDuration}: ${res.status}`);
-          continue;
+        let pageToken: string | undefined;
+        for (let page = 0; page < maxPages; page++) {
+          const url =
+            `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&order=date` +
+            `&videoDuration=${videoDuration}&maxResults=25&publishedAfter=${publishedAfter}` +
+            `&q=${encodeURIComponent(q)}&key=${apiKey}` +
+            (pageToken ? `&pageToken=${pageToken}` : "");
+          const res = await fetch(url);
+          if (!res.ok) {
+            // Rate limit / quota exhausted hits here first — skip this query
+            // rather than failing the whole connector, same pattern as
+            // GitHubConnector's per-topic try.
+            console.warn(`YouTube search failed for q="${q}" duration=${videoDuration}: ${res.status}`);
+            break;
+          }
+          const data = (await res.json()) as YouTubeSearchResponse;
+          for (const item of data.items) byId.set(item.id.videoId, item);
+          if (!data.nextPageToken) break;
+          pageToken = data.nextPageToken;
         }
-        const data = (await res.json()) as { items: YouTubeSearchItem[] };
-        for (const item of data.items) byId.set(item.id.videoId, item);
       }
     }
 

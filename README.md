@@ -129,6 +129,39 @@ tsx scripts/approve.ts <id>          # approve
 tsx scripts/approve.ts <id> reject   # reject
 ```
 
+## Backfill
+
+One-off historical catch-up — `ingest` (widened) → `tag` → `aggregate` →
+`export`, same four stages as `all`, just pointed at the past instead of
+"since last run". Not part of the daily/weekly schedule; always a manual,
+explicit run.
+
+```bash
+npm run dev backfill        # 30 days
+npm run dev backfill 45     # or any other number
+```
+
+Not every source can actually go back a month — each one does whatever its
+API allows:
+
+| Source | Backfill behavior |
+|---|---|
+| HN | real history, paginated one Algolia call per day (a single call is capped at 200 results regardless of window size) |
+| GitHub | `created:>` widened to the requested window — still capped at 20 repos/topic, no extra cost |
+| Reddit | switches from `/hot` to `/top?t=month` — real posts spread across the actual past month, not "what's hot right now" |
+| YouTube | `publishedAfter` widened + paginated up to 4 pages/query — quota-capped, not exhaustive |
+| RSS / Medium | **no real backfill** — a feed only exposes what the publisher currently keeps in it, so these just return today's feed contents regardless of the window requested |
+| X | capped at 14 days and `MAX_BACKFILL_TWEETS_PER_ACCOUNT` (25/account) **no matter what window is requested** — the only pay-per-use source here, so this cap is deliberately hardcoded in `x.ts`, not just a CLI default. Worst case: 20 accounts × 25 tweets × ~$0.005/read + one ~$0.20 batched user lookup ≈ $2.70. Raise `MAX_BACKFILL_TWEETS_PER_ACCOUNT` there if your budget allows more. |
+
+`aggregate`'s 30-day window (`computeTrendSnapshots`) already buckets by each
+post's real `postedAt`, so one backfill run is enough — no need to simulate
+running the daily pipeline 30 separate times.
+
+`discover` is intentionally not part of `backfill`: it always looks at the
+last 7 days of untagged posts regardless of how far back you just ingested,
+same as its normal weekly behavior. Run it separately if you want it to
+consider what backfill brought in.
+
 ## Syncing into the main app
 
 `export` POSTs its trend payload to the main `cantkeepupwithai` repo's

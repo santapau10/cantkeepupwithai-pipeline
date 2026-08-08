@@ -1,4 +1,16 @@
-import type { NormalizedPost, SourceConnector } from "./types.js";
+import type { FetchOptions, NormalizedPost, SourceConnector } from "./types.js";
+
+// Hard caps, independent of whatever `options.days` a caller passes in — X
+// reads are the only pay-per-use source here, so a backfill that asked for
+// e.g. 30 days like the free sources get would silently multiply the bill.
+// Neither of these is a default that's easy to accidentally widen.
+const MAX_BACKFILL_DAYS = 14;
+
+// Worst case (every one of the 20 tracked accounts hits the cap):
+// 20 * 25 * $0.005/post read = $2.50, + one batched $0.01x20 = $0.20 user
+// lookup = $2.70 total — kept under the $4 account balance with headroom,
+// since ~$0.005/post is this repo's own estimate, not a guaranteed rate.
+const MAX_BACKFILL_TWEETS_PER_ACCOUNT = 25;
 
 type XUser = { id: string; username: string };
 
@@ -63,7 +75,7 @@ export class XConnector implements SourceConnector {
     return `@${this.username}`;
   }
 
-  async fetchRecent(): Promise<NormalizedPost[]> {
+  async fetchRecent(options?: FetchOptions): Promise<NormalizedPost[]> {
     const token = process.env.X_BEARER_TOKEN;
     if (!token) {
       throw new Error(
@@ -76,10 +88,18 @@ export class XConnector implements SourceConnector {
     const userId = ids.get(this.username.toLowerCase());
     if (!userId) throw new Error(`X user lookup returned no match for @${this.username}`);
 
-    // max_results=5 is the API floor — can't request fewer per account.
+    // Daily path: max_results=5 is the API floor — can't request fewer per
+    // account. Backfill: widen to MAX_BACKFILL_TWEETS_PER_ACCOUNT and add
+    // start_time, capped at MAX_BACKFILL_DAYS regardless of what's asked
+    // for. Single page, deliberately — paginating past the cap would defeat
+    // the point of having one.
+    const params = options?.days
+      ? `max_results=${MAX_BACKFILL_TWEETS_PER_ACCOUNT}&start_time=${new Date(Date.now() - Math.min(options.days, MAX_BACKFILL_DAYS) * 24 * 60 * 60 * 1000).toISOString()}`
+      : "max_results=5";
+
     const res = await fetch(
       `https://api.x.com/2/users/${userId}/tweets` +
-        "?max_results=5&exclude=retweets,replies&tweet.fields=created_at,public_metrics",
+        `?${params}&exclude=retweets,replies&tweet.fields=created_at,public_metrics`,
       { headers: { Authorization: `Bearer ${token}` } },
     );
     if (!res.ok) throw new Error(`X fetch failed for @${this.username}: ${res.status} ${res.statusText}`);

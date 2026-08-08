@@ -12,7 +12,8 @@
     "ingest": "tsx src/index.ts ingest",
     "tag": "tsx src/index.ts tag",
     "discover": "tsx src/index.ts discover",
-    "review": "tsx src/index.ts review"
+    "review": "tsx src/index.ts review",
+    "backfill": "tsx src/index.ts backfill"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

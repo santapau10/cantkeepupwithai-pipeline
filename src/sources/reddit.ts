@@ -1,4 +1,4 @@
-import type { NormalizedPost, SourceConnector } from "./types.js";
+import type { FetchOptions, NormalizedPost, SourceConnector } from "./types.js";
 
 type RedditListing = {
   data: {
@@ -59,11 +59,20 @@ export class RedditConnector implements SourceConnector {
     return `r/${this.subreddit}`;
   }
 
-  async fetchRecent(): Promise<NormalizedPost[]> {
+  async fetchRecent(options?: FetchOptions): Promise<NormalizedPost[]> {
     const token = await getAccessToken();
     const userAgent = process.env.REDDIT_USER_AGENT!;
 
-    const res = await fetch(`https://oauth.reddit.com/r/${this.subreddit}/hot?limit=50`, {
+    // Daily path: /hot, current front page. Backfill: /top?t=month — real
+    // historical posts spread across the last month with real created_utc,
+    // instead of "what's hot right now". Reddit's `t` param only offers
+    // fixed buckets (day/week/month/year), so any `options.days` maps to
+    // "month" rather than an exact day count.
+    const listingPath = options?.days
+      ? `${this.subreddit}/top?t=month&limit=100`
+      : `${this.subreddit}/hot?limit=50`;
+
+    const res = await fetch(`https://oauth.reddit.com/r/${listingPath}`, {
       headers: { Authorization: `Bearer ${token}`, "User-Agent": userAgent },
     });
     if (!res.ok) throw new Error(`Reddit fetch failed for r/${this.subreddit}: ${res.status}`);

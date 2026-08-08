@@ -42,17 +42,23 @@ function todaysRotation<T>(accounts: T[], groups: number): T[] {
   return accounts.filter((_, i) => i % groups === turn);
 }
 
-/** Every source the pipeline knows how to read from, HN/GitHub included. */
-export function buildConnectors(): SourceConnector[] {
+/**
+ * Every source the pipeline knows how to read from, HN/GitHub included.
+ * `backfill: true` bypasses the X rotation — a one-time historical catch-up
+ * should cover every tracked account, not just today's half.
+ */
+export function buildConnectors(opts?: { backfill?: boolean }): SourceConnector[] {
   const config = loadSourcesConfig();
   const connectors: SourceConnector[] = [new HackerNewsConnector(), new GitHubConnector(), new YouTubeConnector()];
 
   for (const subreddit of config.reddit) {
     connectors.push(new RedditConnector(subreddit));
   }
-  const todaysXAccounts = todaysRotation(config.x_accounts, config.x_rotation_groups ?? 1);
-  for (const username of todaysXAccounts) {
-    connectors.push(new XConnector(username, todaysXAccounts));
+  const xAccounts = opts?.backfill
+    ? config.x_accounts
+    : todaysRotation(config.x_accounts, config.x_rotation_groups ?? 1);
+  for (const username of xAccounts) {
+    connectors.push(new XConnector(username, xAccounts));
   }
   for (const feed of config.rss_community) {
     connectors.push(new RssConnector(feed.name, feed.url, "community"));

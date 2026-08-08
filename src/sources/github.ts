@@ -1,4 +1,4 @@
-import type { NormalizedPost, SourceConnector } from "./types.js";
+import type { FetchOptions, NormalizedPost, SourceConnector } from "./types.js";
 
 type GitHubRepo = {
   id: number;
@@ -29,8 +29,11 @@ export class GitHubConnector implements SourceConnector {
     return headers;
   }
 
-  async fetchRecent(): Promise<NormalizedPost[]> {
-    const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  async fetchRecent(options?: FetchOptions): Promise<NormalizedPost[]> {
+    // per_page=20 below caps results to the top 20 by stars per topic no
+    // matter how wide this window is, so a backfill just changes which repos
+    // qualify — no pagination/volume concern like HN's.
+    const since = new Date(Date.now() - (options?.days ?? 14) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const byId = new Map<number, GitHubRepo>();
 
     for (const topic of TOPICS) {
