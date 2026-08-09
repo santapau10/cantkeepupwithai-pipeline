@@ -8,6 +8,7 @@ import { RedditConnector } from "./reddit.js";
 import { RssConnector } from "./rss.js";
 import { XConnector } from "./x.js";
 import { YouTubeConnector } from "./youtube.js";
+import { ArxivConnector } from "./arxiv.js";
 import type { SourceConnector } from "./types.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -49,7 +50,12 @@ function todaysRotation<T>(accounts: T[], groups: number): T[] {
  */
 export function buildConnectors(opts?: { backfill?: boolean }): SourceConnector[] {
   const config = loadSourcesConfig();
-  const connectors: SourceConnector[] = [new HackerNewsConnector(), new GitHubConnector(), new YouTubeConnector()];
+  const connectors: SourceConnector[] = [
+    new HackerNewsConnector(),
+    new GitHubConnector(),
+    new YouTubeConnector(),
+    new ArxivConnector(),
+  ];
 
   for (const subreddit of config.reddit) {
     connectors.push(new RedditConnector(subreddit));

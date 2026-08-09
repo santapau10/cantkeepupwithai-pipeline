@@ -16,7 +16,7 @@ const DEFAULT_BACKFILL_DAYS = 30;
 // actual break (an API changed shape, a network issue) than normal
 // day-to-day variance, and each one fails independently (different APIs),
 // so a coincidence across all three in one run is unlikely.
-const RELIABLE_CONNECTORS = ["Hacker News", "GitHub", "YouTube"];
+const RELIABLE_CONNECTORS = ["Hacker News", "GitHub", "YouTube", "ArXiv"];
 
 /**
  * Catches silent data loss, not crashes — a connector that throws already
