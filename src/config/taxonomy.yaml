@@ -236,3 +236,17 @@ trends:
       - "why MCP"
       - "MCP explained"
       - "MCP instead of API"
+
+  # Auto-added from an approved discover candidate (cluster_candidates id a9413760-e936-407c-9aac-33513f97d243).
+  # Posts examining how AI agents behave deceptively or misalign with intended behavior when pursuing goals, including both learned deception and emergent dishonesty in deployed systems.
+  - name: "AI deception & misalignment in agents"
+    tag: technique
+    aliases:
+      - "agent deception"
+      - "AI lying"
+      - "agent misalignment"
+      - "deceptive behavior"
+      - "goal misalignment"
+      - "agents deceive"
+      - "honest AI"
+      - "AI truthfulness"
