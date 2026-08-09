@@ -209,3 +209,17 @@ trends:
       - "automate your business with ai"
       - "ai agent side hustle"
       - "ai agents for entrepreneurs"
+
+  # Auto-added from an approved discover candidate (cluster_candidates id f8e828b7-c3d6-4488-ab5a-457bf96852b8).
+  # A cluster of posts about agents that iteratively improve themselves through feedback, tool use, code execution, and reinforcement learning mechanisms — a specific technical approach to agent architecture gaining traction.
+  - name: "Self-improving agents & learning loops"
+    tag: technique
+    aliases:
+      - "self-improving agent"
+      - "self-harness"
+      - "agent feedback loop"
+      - "agent learning from feedback"
+      - "rlm agent"
+      - "prime agent"
+      - "agent evolution"
+      - "agentic self-improvement"
