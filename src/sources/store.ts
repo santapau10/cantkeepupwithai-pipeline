@@ -123,6 +123,7 @@ export async function ingestConnector(connector: SourceConnector, options?: Fetc
           externalId: post.externalId,
           title: post.title,
           url: post.url,
+          snippet: post.snippet,
           author: post.author,
           score: post.score,
           commentCount: post.commentCount,

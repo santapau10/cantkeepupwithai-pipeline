@@ -1,4 +1,5 @@
 import type { FetchOptions, NormalizedPost, SourceConnector } from "./types.js";
+import { truncateSnippet } from "./types.js";
 
 type GitHubRepo = {
   id: number;
@@ -52,7 +53,13 @@ export class GitHubConnector implements SourceConnector {
 
     return [...byId.values()].map((repo) => ({
       externalId: String(repo.id),
+      // Description stays folded into the title (unchanged) — `tag`'s
+      // keyword match runs against `title`, and some repos only match on
+      // words that appear in their description, not their name. Also
+      // captured on its own as `snippet` for a cleaner reference card;
+      // duplicated on purpose, not a replacement.
       title: repo.description ? `${repo.full_name} — ${repo.description}` : repo.full_name,
+      snippet: truncateSnippet(repo.description ?? undefined),
       url: repo.html_url,
       author: repo.owner.login,
       score: repo.stargazers_count,

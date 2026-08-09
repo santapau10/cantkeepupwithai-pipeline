@@ -1,5 +1,6 @@
 import Parser from "rss-parser";
 import type { NormalizedPost, SourceConnector, SourceKind } from "./types.js";
+import { truncateSnippet } from "./types.js";
 
 const parser = new Parser();
 
@@ -20,6 +21,9 @@ export class RssConnector implements SourceConnector {
         externalId: item.guid ?? item.link!,
         title: item.title!,
         url: item.link!,
+        // rss-parser already strips HTML/truncates this to plain text — a
+        // free real excerpt most feeds provide, previously just discarded.
+        snippet: truncateSnippet(item.contentSnippet),
         author: item.creator ?? item.author,
         score: 0,
         commentCount: 0,

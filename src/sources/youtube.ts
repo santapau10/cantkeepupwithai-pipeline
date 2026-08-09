@@ -1,4 +1,5 @@
 import type { FetchOptions, NormalizedPost, SourceConnector } from "./types.js";
+import { truncateSnippet } from "./types.js";
 
 type YouTubeSearchItem = {
   id: { videoId: string };
@@ -6,6 +7,7 @@ type YouTubeSearchItem = {
     title: string;
     channelTitle: string;
     publishedAt: string;
+    description: string;
   };
 };
 
@@ -90,6 +92,9 @@ export class YouTubeConnector implements SourceConnector {
       externalId: item.id.videoId,
       title: item.snippet.title,
       url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+      // search.list already returns this in the same response as
+      // title/channel/date — no extra API cost to also capture it.
+      snippet: truncateSnippet(item.snippet.description),
       author: item.snippet.channelTitle,
       score: Number(stats.get(item.id.videoId)?.viewCount ?? 0),
       commentCount: Number(stats.get(item.id.videoId)?.commentCount ?? 0),

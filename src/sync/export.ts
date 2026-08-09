@@ -58,6 +58,7 @@ async function buildReferences(trendName: string) {
     title: m.post.title,
     url: m.post.url,
     postedAt: m.post.postedAt.toISOString(),
+    snippet: m.post.snippet,
     upvotes: m.post.score || null,
   }));
 }

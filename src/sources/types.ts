@@ -2,11 +2,26 @@ export type NormalizedPost = {
   externalId: string;
   title: string;
   url: string;
+  // Real excerpt, when the source API gives one for free — see RssConnector,
+  // YouTubeConnector, GitHubConnector. Left undefined (not empty string) for
+  // sources with no natural equivalent (HN, Reddit, X).
+  snippet?: string;
   author?: string;
   score: number;
   commentCount: number;
   postedAt: Date;
 };
+
+// Applied wherever a source snippet is captured — some RSS feeds dump a
+// full article into `contentSnippet`, which would otherwise bloat storage
+// and blow well past the frontend's 2-line clamp for no benefit.
+export const MAX_SNIPPET_LENGTH = 280;
+
+export function truncateSnippet(text: string | undefined | null): string | undefined {
+  const trimmed = text?.trim();
+  if (!trimmed) return undefined;
+  return trimmed.length > MAX_SNIPPET_LENGTH ? `${trimmed.slice(0, MAX_SNIPPET_LENGTH - 1)}…` : trimmed;
+}
 
 export type SourceKind = "community" | "news";
 
