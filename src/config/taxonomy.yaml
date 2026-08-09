@@ -223,3 +223,16 @@ trends:
       - "prime agent"
       - "agent evolution"
       - "agentic self-improvement"
+
+  # Auto-added from an approved discover candidate (cluster_candidates id 8fbb4b49-3d64-4ec6-9f20-1720c9556df2).
+  # Posts explaining and comparing MCP (Model Context Protocol) to traditional APIs, exploring why MCP exists as a distinct protocol and their complementary roles.
+  - name: "MCP vs APIs & protocol comparison"
+    tag: protocol
+    aliases:
+      - "MCP vs API"
+      - "MCP vs REST"
+      - "MCP protocol comparison"
+      - "MCP versus API"
+      - "why MCP"
+      - "MCP explained"
+      - "MCP instead of API"
