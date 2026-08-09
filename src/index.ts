@@ -1,6 +1,6 @@
 import { prisma } from "./lib/prisma.js";
 import { buildConnectors } from "./sources/registry.js";
-import { ingestConnector } from "./sources/store.js";
+import { ingestConnector, type IngestResult } from "./sources/store.js";
 import type { FetchOptions } from "./sources/types.js";
 import { tagUntaggedPosts } from "./taxonomy/match.js";
 import { computeTrendSnapshots } from "./aggregate/snapshot.js";
@@ -8,6 +8,37 @@ import { exportForMainApp } from "./sync/export.js";
 import { discoverNewTrends, listPendingCandidates } from "./discover/discover.js";
 
 const DEFAULT_BACKFILL_DAYS = 30;
+
+// No credentials required, so these three should return *something* on
+// basically any normal day — unlike Reddit/X (gated by credentials that may
+// legitimately be unset) or RSS/Medium (small volume, can genuinely be 0
+// some days). All three failing at once is a much stronger signal of an
+// actual break (an API changed shape, a network issue) than normal
+// day-to-day variance, and each one fails independently (different APIs),
+// so a coincidence across all three in one run is unlikely.
+const RELIABLE_CONNECTORS = ["Hacker News", "GitHub", "YouTube"];
+
+/**
+ * Catches silent data loss, not crashes — a connector that throws already
+ * gets caught per-connector (see `ingest` below) and shows up as
+ * `error` in its IngestResult, not a thrown exception. This is for the
+ * scarier case: a connector "succeeds" (no exception) but its response
+ * shape quietly changed and it's actually returning nothing useful. Throws
+ * so it propagates through logRun -> main()'s catch -> process.exit(1),
+ * which fails the GitHub Actions run — GitHub emails the repo owner on a
+ * failed run by default, so that's the whole alerting mechanism, no new
+ * infra needed.
+ */
+function assertIngestHealthy(results: IngestResult[]) {
+  const reliable = results.filter((r) => RELIABLE_CONNECTORS.includes(r.sourceName));
+  const allEmpty = reliable.length === RELIABLE_CONNECTORS.length && reliable.every((r) => !r.error && r.fetched === 0);
+  if (allEmpty) {
+    throw new Error(
+      `Ingest health check failed: ${RELIABLE_CONNECTORS.join(", ")} all returned 0 posts with no error — ` +
+        `likely an API or network issue, not normal daily variance.`,
+    );
+  }
+}
 
 async function logRun(stage: string, fn: () => Promise<Record<string, unknown>>) {
   const start = Date.now();
@@ -26,7 +57,7 @@ async function logRun(stage: string, fn: () => Promise<Record<string, unknown>>)
 
 async function ingest(options?: FetchOptions) {
   const connectors = buildConnectors({ backfill: Boolean(options?.days) });
-  const results = [];
+  const results: IngestResult[] = [];
   for (const connector of connectors) {
     const result = await ingestConnector(connector, options);
     results.push(result);
@@ -34,6 +65,7 @@ async function ingest(options?: FetchOptions) {
     const status = result.error ? `SKIPPED (${result.error})` : `${result.stored} new / ${result.fetched} fetched${dupeNote}`;
     console.log(`  ${connector.name}: ${status}`);
   }
+  assertIngestHealthy(results);
   return { results };
 }
 

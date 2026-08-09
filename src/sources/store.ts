@@ -1,5 +1,5 @@
 import { prisma } from "../lib/prisma.js";
-import type { FetchOptions, SourceConnector } from "./types.js";
+import type { FetchOptions, NormalizedPost, SourceConnector } from "./types.js";
 
 export type IngestResult = {
   sourceName: string;
@@ -19,6 +19,7 @@ const DEDUP_WINDOW_DAYS = 7;
 // source can land a day later (different timezone, different crawl time),
 // not just earlier.
 const DEDUP_FORWARD_BUFFER_DAYS = 1;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Fetches one connector, upserts its Source row, dedups posts two ways:
@@ -35,6 +36,12 @@ const DEDUP_FORWARD_BUFFER_DAYS = 1;
  * Same-story-different-wording (three outlets covering one event in their
  * own words) isn't caught here — that needs semantic comparison, not exact
  * match; not implemented yet.
+ *
+ * Batched, not per-post: this used to run two queries (cross-source dup
+ * check, then existing-row check) *for every post*, sequentially — fine at
+ * daily volume, but a 30-day backfill's ~6,000 HN posts alone meant 12,000
+ * round trips to Neon and a 54-minute `ingest` stage. Two queries total per
+ * connector call instead, everything else done in memory.
  */
 export async function ingestConnector(connector: SourceConnector, options?: FetchOptions): Promise<IngestResult> {
   const source = await prisma.source.upsert({
@@ -49,44 +56,69 @@ export async function ingestConnector(connector: SourceConnector, options?: Fetc
     },
   });
 
-  let posts;
+  let posts: NormalizedPost[];
   try {
     posts = await connector.fetchRecent(options);
   } catch (err) {
     return { sourceName: connector.name, fetched: 0, stored: 0, error: (err as Error).message };
   }
 
-  let stored = 0;
+  if (posts.length === 0) {
+    return { sourceName: connector.name, fetched: 0, stored: 0, duplicatesSkipped: 0 };
+  }
+
+  // One query covering every incoming post's own dedup window, instead of
+  // one query per post — the per-post check below is then just an in-memory
+  // lookup against this.
+  const times = posts.map((p) => p.postedAt.getTime());
+  const batchWindowStart = new Date(Math.min(...times) - DEDUP_WINDOW_DAYS * DAY_MS);
+  const batchWindowEnd = new Date(Math.max(...times) + DEDUP_FORWARD_BUFFER_DAYS * DAY_MS);
+
+  const [otherSourcePosts, existingForThisSource] = await Promise.all([
+    prisma.rawPost.findMany({
+      where: { postedAt: { gte: batchWindowStart, lte: batchWindowEnd }, sourceId: { not: source.id } },
+      select: { title: true, postedAt: true },
+    }),
+    prisma.rawPost.findMany({
+      where: { sourceId: source.id, externalId: { in: posts.map((p) => p.externalId) } },
+      select: { externalId: true },
+    }),
+  ]);
+
+  const otherByTitle = new Map<string, Date[]>();
+  for (const p of otherSourcePosts) {
+    const key = p.title.toLowerCase();
+    const list = otherByTitle.get(key);
+    if (list) list.push(p.postedAt);
+    else otherByTitle.set(key, [p.postedAt]);
+  }
+  const existingExternalIds = new Set(existingForThisSource.map((p) => p.externalId));
+
+  const toInsert: NormalizedPost[] = [];
   let duplicatesSkipped = 0;
 
   for (const post of posts) {
-    const windowStart = new Date(post.postedAt.getTime() - DEDUP_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-    const windowEnd = new Date(post.postedAt.getTime() + DEDUP_FORWARD_BUFFER_DAYS * 24 * 60 * 60 * 1000);
-    const duplicateElsewhere = await prisma.rawPost.findFirst({
-      where: {
-        title: { equals: post.title, mode: "insensitive" },
-        postedAt: { gte: windowStart, lte: windowEnd },
-        sourceId: { not: source.id },
-      },
-      select: { id: true },
-    });
-    if (duplicateElsewhere) {
+    if (existingExternalIds.has(post.externalId)) continue; // posts are immutable once seen — no-op, not "stored"
+
+    const candidates = otherByTitle.get(post.title.toLowerCase());
+    const windowStart = post.postedAt.getTime() - DEDUP_WINDOW_DAYS * DAY_MS;
+    const windowEnd = post.postedAt.getTime() + DEDUP_FORWARD_BUFFER_DAYS * DAY_MS;
+    const hasCrossSourceDup = candidates?.some((d) => d.getTime() >= windowStart && d.getTime() <= windowEnd);
+    if (hasCrossSourceDup) {
       duplicatesSkipped++;
       continue;
     }
 
-    // Explicit find-then-create instead of upsert(update: {}) — an upsert's
-    // return value doesn't say whether it went through the create or update
-    // branch, so counting `stored` off of it (as this used to) claimed every
-    // already-seen post as newly stored too. Posts are immutable once seen,
-    // so an existing row is a true no-op, not a "stored" one.
-    const existing = await prisma.rawPost.findUnique({
-      where: { sourceId_externalId: { sourceId: source.id, externalId: post.externalId } },
-      select: { id: true },
-    });
-    if (!existing) {
-      await prisma.rawPost.create({
-        data: {
+    toInsert.push(post);
+  }
+
+  // skipDuplicates as a safety net against the (sourceId, externalId)
+  // unique constraint, not the primary dedup mechanism — the check above
+  // already filtered those out; this just covers a same-batch collision or
+  // a race with a concurrent run.
+  const { count: stored } = toInsert.length
+    ? await prisma.rawPost.createMany({
+        data: toInsert.map((post) => ({
           sourceId: source.id,
           externalId: post.externalId,
           title: post.title,
@@ -95,11 +127,10 @@ export async function ingestConnector(connector: SourceConnector, options?: Fetc
           score: post.score,
           commentCount: post.commentCount,
           postedAt: post.postedAt,
-        },
-      });
-      stored++;
-    }
-  }
+        })),
+        skipDuplicates: true,
+      })
+    : { count: 0 };
 
   return { sourceName: connector.name, fetched: posts.length, stored, duplicatesSkipped };
 }

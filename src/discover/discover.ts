@@ -2,6 +2,8 @@ import { prisma } from "../lib/prisma.js";
 import { embedTexts } from "./embed.js";
 import { greedyCluster } from "./cluster.js";
 import { labelCluster } from "./label.js";
+import { loadTaxonomy } from "../taxonomy/match.js";
+import { findLikelyDuplicate, type TrendLike } from "../taxonomy/similarity.js";
 
 const MIN_CLUSTER_SIZE = 3; // below this, almost always noise, not a trend
 // Lowered from 0.82 after checking real pairs on 2026-08-07: near-duplicate
@@ -45,6 +47,24 @@ export async function discoverNewTrends() {
 
   const titleById = new Map(untagged.map((p) => [p.id, p.title]));
   let candidatesCreated = 0;
+  let duplicatesSkipped = 0;
+
+  // What to check every new cluster against: the taxonomy as it stands
+  // today, any candidate still awaiting review from a previous run (its
+  // posts are still untagged, so the same topic can easily re-cluster
+  // before anyone's approved/rejected it), and whatever this run has
+  // already proposed (greedy clustering can split one real trend into two
+  // clusters — this catches that case name/alias comparison couldn't
+  // before at either point, not just at apply time).
+  const existingTaxonomy: TrendLike[] = loadTaxonomy().map((t) => ({ name: t.name, aliases: t.aliases }));
+  const stillPending = await prisma.clusterCandidate.findMany({
+    where: { status: "pending" },
+    select: { suggestedName: true, suggestedAliases: true },
+  });
+  const knownTrends: TrendLike[] = [
+    ...existingTaxonomy,
+    ...stillPending.map((c) => ({ name: c.suggestedName, aliases: JSON.parse(c.suggestedAliases || "[]") as string[] })),
+  ];
 
   for (const cluster of clusters) {
     const sampleIds = cluster.memberIds.slice(0, MAX_SAMPLE_POST_IDS);
@@ -52,6 +72,13 @@ export async function discoverNewTrends() {
 
     const label = await labelCluster(sampleTitles);
     if (!label.isRealTrend) continue;
+
+    const dup = findLikelyDuplicate(label.suggestedName, label.suggestedAliases, knownTrends);
+    if (dup) {
+      console.log(`Skipping "${label.suggestedName}" — ${dup.reason}`);
+      duplicatesSkipped++;
+      continue;
+    }
 
     await prisma.clusterCandidate.create({
       data: {
@@ -65,9 +92,13 @@ export async function discoverNewTrends() {
       },
     });
     candidatesCreated++;
+    // So a later cluster in the same run that turns out to be the same
+    // trend (split by the greedy clustering) gets caught too, not just
+    // duplicates of what existed before this run started.
+    knownTrends.push({ name: label.suggestedName, aliases: label.suggestedAliases });
   }
 
-  return { untaggedPosts: untagged.length, clustersFound: clusters.length, candidatesCreated };
+  return { untaggedPosts: untagged.length, clustersFound: clusters.length, candidatesCreated, duplicatesSkipped };
 }
 
 /** For the human review step — prints pending candidates for someone to approve/reject. */

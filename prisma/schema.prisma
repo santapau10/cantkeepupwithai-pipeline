@@ -79,6 +79,13 @@ model ClusterCandidate {
   rationale         String   @default("") // why the model thinks this is a distinct trend
   clusterSize       Int      @default(0)  // total untagged posts in the cluster, not just the sample
   status            String   @default("pending") // pending | approved | rejected
+  // Set by scripts/applyCandidate.ts when an approved candidate looks like a
+  // duplicate of an existing trend (by alias overlap or name similarity —
+  // see taxonomy/similarity.ts) and it refused to write taxonomy.yaml.
+  // Null means either not yet applied, or applied clean. Surfaced in
+  // /admin so it doesn't just silently do nothing; cleared once someone
+  // force-applies it or renames it and it no longer collides.
+  applyBlockedReason String?
   createdAt         DateTime @default(now())
 
   @@map("cluster_candidates")

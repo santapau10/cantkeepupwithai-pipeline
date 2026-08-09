@@ -1,4 +1,4 @@
-// Usage: tsx scripts/applyCandidate.ts <candidateId>
+// Usage: tsx scripts/applyCandidate.ts <candidateId> [--force]
 //
 // Second half of the "approve" flow — the web admin's approve button flips
 // ClusterCandidate.status to "approved" and dispatches the pipeline's
@@ -16,13 +16,15 @@ import path from "node:path";
 import { prisma } from "../src/lib/prisma.js";
 import { loadTaxonomy } from "../src/taxonomy/match.js";
 import { labelCluster } from "../src/discover/label.js";
+import { findLikelyDuplicate, type TrendLike } from "../src/taxonomy/similarity.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const taxonomyPath = path.join(here, "../src/config/taxonomy.yaml");
 
-const [id] = process.argv.slice(2);
+const [id, ...rest] = process.argv.slice(2);
+const force = rest.includes("--force");
 if (!id) {
-  console.error("Usage: tsx scripts/applyCandidate.ts <candidateId>");
+  console.error("Usage: tsx scripts/applyCandidate.ts <candidateId> [--force]");
   process.exit(1);
 }
 
@@ -40,6 +42,9 @@ if (candidate.status !== "approved") {
 const existing = loadTaxonomy();
 if (existing.some((t) => t.name === candidate.suggestedName)) {
   console.log(`"${candidate.suggestedName}" is already in taxonomy.yaml — nothing to do.`);
+  if (candidate.applyBlockedReason) {
+    await prisma.clusterCandidate.update({ where: { id }, data: { applyBlockedReason: null } });
+  }
   process.exit(0);
 }
 
@@ -54,6 +59,28 @@ if (aliases.length === 0) {
   aliases = label.suggestedAliases;
 }
 
+// Catches what an exact-name check misses: a human renaming the suggested
+// name during review (this happened for real — "Agent memory systems &
+// persistence" vs a hand-shortened "Agent memory & persistence" — and
+// produced a live duplicate trend that had to be cleaned up by hand in both
+// this DB and the web's). `--force` is the deliberate escape hatch for a
+// human who's looked at the flagged match and decided it's a false
+// positive — the /admin "aplicar de todos modos" button sets it.
+if (!force) {
+  const taxonomyTrends: TrendLike[] = existing.map((t) => ({ name: t.name, aliases: t.aliases }));
+  const dup = findLikelyDuplicate(candidate.suggestedName, aliases, taxonomyTrends);
+  if (dup) {
+    const reason = `Looks like a duplicate: ${dup.reason}`;
+    console.error(reason);
+    await prisma.clusterCandidate.update({ where: { id }, data: { applyBlockedReason: reason } });
+    // Exit 0, not 1: this isn't a failure of the workflow, it's a correct
+    // refusal. taxonomy.yaml is untouched, so the workflow's "commit and
+    // push" step naturally no-ops (empty git diff), and tag/aggregate/export
+    // still run harmlessly after.
+    process.exit(0);
+  }
+}
+
 const block = [
   "",
   `  # Auto-added from an approved discover candidate (cluster_candidates id ${candidate.id}).`,
@@ -66,6 +93,10 @@ const block = [
 
 const yaml = readFileSync(taxonomyPath, "utf8");
 writeFileSync(taxonomyPath, yaml.replace(/\s*$/, "") + "\n" + block + "\n");
+
+if (candidate.applyBlockedReason) {
+  await prisma.clusterCandidate.update({ where: { id }, data: { applyBlockedReason: null } });
+}
 
 console.log(`Added "${candidate.suggestedName}" (${candidate.suggestedTag}) with ${aliases.length} aliases.`);
 

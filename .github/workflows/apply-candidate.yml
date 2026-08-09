@@ -15,6 +15,11 @@ on:
         description: "cluster_candidates.id to apply"
         required: true
         type: string
+      force:
+        description: "Bypass the duplicate check (admin's 'aplicar de todos modos')"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -36,7 +41,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
-      - run: npx tsx scripts/applyCandidate.ts "${{ inputs.candidate_id }}"
+      - run: npx tsx scripts/applyCandidate.ts "${{ inputs.candidate_id }}" ${{ inputs.force && '--force' || '' }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           # Only spent if this candidate predates suggestedAliases and needs
