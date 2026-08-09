@@ -4,8 +4,11 @@ name: Daily ingest + tag + sync
 # (DATABASE_URL, VOYAGE_API_KEY, X_BEARER_TOKEN, WEB_SYNC_URL/
 # WEB_SYNC_API_KEY — Reddit's aren't, ingest just skips that source) and the
 # full flow was verified end to end locally first. Each run costs real
-# Voyage (+ X, pay-per-use) API usage — no Anthropic call on this path,
-# only the weekly discover.yml uses that key.
+# Voyage (+ X, pay-per-use) API usage, plus a small Anthropic cost since
+# 2026-08-09 — export translates the handful of non-English reference
+# titles it's about to show, not the full ingested backlog (see
+# taxonomy/translate.ts). Missing ANTHROPIC_API_KEY just skips translation,
+# doesn't fail the run.
 #
 # `workflow_dispatch` still works too, for an explicit one-off manual run
 # from the GitHub Actions UI/CLI, independent of the schedule.
@@ -35,6 +38,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
           REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
           REDDIT_USER_AGENT: ${{ secrets.REDDIT_USER_AGENT }}

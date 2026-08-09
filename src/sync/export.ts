@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { prisma } from "../lib/prisma.js";
 import { computeTrendSnapshots } from "../aggregate/snapshot.js";
+import { translateTitles } from "../taxonomy/translate.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const exportDir = path.join(here, "../../data/export");
@@ -53,12 +54,51 @@ async function buildReferences(trendName: string) {
     mentions.push(m);
   }
 
+  // Translate display title + snippet for only this trend's ~10 shown
+  // references, not the whole ingested backlog — and only the ones not
+  // already cached from a previous day's export (see
+  // RawPost.titleTranslated/snippetTranslated). Title and snippet go in one
+  // batched call together, not two separate ones, to halve the model calls.
+  const untranslated = mentions.filter(
+    (m) => m.post.titleTranslated === null || (m.post.snippet !== null && m.post.snippetTranslated === null),
+  );
+  if (untranslated.length > 0) {
+    const titles = untranslated.map((m) => m.post.title);
+    const snippetIndices: number[] = [];
+    const snippets: string[] = [];
+    untranslated.forEach((m, i) => {
+      if (m.post.snippet) {
+        snippetIndices.push(i);
+        snippets.push(m.post.snippet);
+      }
+    });
+
+    const translated = await translateTitles([...titles, ...snippets]);
+    const translatedTitles = translated.slice(0, titles.length);
+    const translatedSnippets = translated.slice(titles.length);
+
+    const snippetByIndex = new Map(snippetIndices.map((origIndex, j) => [origIndex, translatedSnippets[j]]));
+
+    await Promise.all(
+      untranslated.map((m, i) =>
+        prisma.rawPost.update({
+          where: { id: m.post.id },
+          data: { titleTranslated: translatedTitles[i], snippetTranslated: snippetByIndex.get(i) ?? null },
+        }),
+      ),
+    );
+    untranslated.forEach((m, i) => {
+      m.post.titleTranslated = translatedTitles[i];
+      m.post.snippetTranslated = snippetByIndex.get(i) ?? null;
+    });
+  }
+
   return mentions.map((m) => ({
     sourceName: m.post.source.name,
-    title: m.post.title,
+    title: m.post.titleTranslated ?? m.post.title,
     url: m.post.url,
     postedAt: m.post.postedAt.toISOString(),
-    snippet: m.post.snippet,
+    snippet: m.post.snippetTranslated ?? m.post.snippet,
     upvotes: m.post.score || null,
   }));
 }

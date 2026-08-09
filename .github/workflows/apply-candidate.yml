@@ -74,3 +74,6 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           WEB_SYNC_URL: ${{ secrets.WEB_SYNC_URL }}
           WEB_SYNC_API_KEY: ${{ secrets.WEB_SYNC_API_KEY }}
+          # Translates non-English reference titles for display — see
+          # taxonomy/translate.ts. Missing key just skips translation.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

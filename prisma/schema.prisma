@@ -30,6 +30,13 @@ model RawPost {
   sourceId    String
   externalId  String              // the source's own id for this post (dedup key)
   title       String
+  // English display copy of `title`, filled in lazily by export.ts only for
+  // posts that actually get selected as a trend reference — never touched
+  // by `tag`, which always matches keywords/embeddings against the
+  // original `title` regardless of language. Null until first translated;
+  // once set, holds the original text unchanged if it was already English
+  // (so it's cached either way and never re-sent to the model twice).
+  titleTranslated String?
   url         String
   // Real excerpt when the source API gives one for free (RSS description,
   // YouTube video description, GitHub repo description) — null for HN/
@@ -37,6 +44,11 @@ model RawPost {
   // forwards this straight through to the web's already-existing
   // TrendReference.snippet column.
   snippet     String?
+  // English display copy of `snippet` — same lazy/cached/display-only
+  // treatment as titleTranslated above, filled in together in the same
+  // translate call. Never used for matching (snippet never is, to begin
+  // with).
+  snippetTranslated String?
   author      String?
   score       Int                 @default(0)
   commentCount Int                @default(0)
