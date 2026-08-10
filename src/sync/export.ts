@@ -14,6 +14,11 @@ const exportDir = path.join(here, "../../data/export");
 // can end up with anywhere from REFERENCES_PER_CRITERION (full overlap) up to
 // 2 * REFERENCES_PER_CRITERION (no overlap) references.
 const REFERENCES_PER_CRITERION = 5;
+// Applied after the union above, so one source can't fill the whole
+// reference list on its own — YouTube's score is view count, which dwarfs
+// GitHub stars/HN points/upvotes, so an uncapped "top by score" pass lets it
+// crowd out every other source once it's ingesting daily.
+const MAX_REFERENCES_PER_SOURCE = 3;
 
 type SyncPayload = {
   trends: {
@@ -46,12 +51,21 @@ async function buildReferences(trendName: string) {
   ]);
 
   // Union of both sets, deduped by post id — a post that ranks in both the
-  // top-by-score and top-by-date cuts should only appear once.
+  // top-by-score and top-by-date cuts should only appear once. Also capped
+  // per source (MAX_REFERENCES_PER_SOURCE) as it's built: byScore comes
+  // first, so a source's highest-scoring posts fill its quota before
+  // byDate gets a chance to add more from the same source — a source that
+  // hits its cap on score alone doesn't get to double-dip on recency too.
   const seen = new Set<string>();
+  const perSourceCount = new Map<string, number>();
   const mentions = [];
   for (const m of [...byScore, ...byDate]) {
     if (seen.has(m.post.id)) continue;
+    const sourceName = m.post.source.name;
+    const count = perSourceCount.get(sourceName) ?? 0;
+    if (count >= MAX_REFERENCES_PER_SOURCE) continue;
     seen.add(m.post.id);
+    perSourceCount.set(sourceName, count + 1);
     mentions.push(m);
   }
 
