@@ -1,9 +1,9 @@
 name: Daily ingest + tag + sync
 
 # Armed 2026-08-07: runs daily at 08:00 UTC. Repo secrets are set
-# (DATABASE_URL, VOYAGE_API_KEY, X_BEARER_TOKEN, WEB_SYNC_URL/
-# WEB_SYNC_API_KEY — Reddit's aren't, ingest just skips that source) and the
-# full flow was verified end to end locally first. Each run costs real
+# (DATABASE_URL, VOYAGE_API_KEY, X_BEARER_TOKEN, YOUTUBE_API_KEY, WEB_SYNC_URL/
+# WEB_SYNC_API_KEY — Reddit's and GITHUB_TOKEN_PAT aren't, ingest just skips
+# those) and the full flow was verified end to end locally first. Each run costs real
 # Voyage (+ X, pay-per-use) API usage, plus a small Anthropic cost since
 # 2026-08-09 — export translates the handful of non-English reference
 # titles it's about to show, not the full ingested backlog (see
@@ -47,5 +47,6 @@ jobs:
           # here to the env var name the pipeline code actually reads.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN_PAT }}
           X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           WEB_SYNC_URL: ${{ secrets.WEB_SYNC_URL }}
           WEB_SYNC_API_KEY: ${{ secrets.WEB_SYNC_API_KEY }}
