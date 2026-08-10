@@ -1,0 +1,41 @@
+name: Toolbox trending refresh
+
+# Refreshes the Toolbox's "Trending" selector on the main app — 8 curated
+# GitHub repos, fully replaced every run (see src/sources/trending.ts and
+# src/sync/export.ts's exportTrendingForMainApp). GitHub Actions cron has no
+# native "every N days" unit, so this steps the day-of-month field
+# (*/3 -> 1, 4, 7, 10...), same pattern as discover.yml; the gap can shrink
+# to 1 day at month boundaries, fine for a non-time-critical refresh.
+#
+# Needs the same DATABASE_URL/WEB_SYNC_URL/WEB_SYNC_API_KEY repo secrets as
+# daily.yml, plus GITHUB_TOKEN_PAT (mapped below to GITHUB_TOKEN, same
+# rename as daily.yml uses) so the GitHub Search API calls run authenticated
+# instead of hitting the 60/hr unauthenticated rate limit.
+on:
+  schedule:
+    - cron: "0 9 */3 * *"
+  workflow_dispatch: {}
+
+jobs:
+  trending:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - run: npx prisma db push
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - run: npm run trending
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN_PAT }}
+          WEB_SYNC_URL: ${{ secrets.WEB_SYNC_URL }}
+          WEB_SYNC_API_KEY: ${{ secrets.WEB_SYNC_API_KEY }}
