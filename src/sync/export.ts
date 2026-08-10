@@ -4,6 +4,7 @@ import path from "node:path";
 import { prisma } from "../lib/prisma.js";
 import { computeTrendSnapshots } from "../aggregate/snapshot.js";
 import { translateTitles } from "../taxonomy/translate.js";
+import { generateTrendContext } from "../synthesize/context.js";
 import { fetchTrendingRepos, type TrendingTool } from "../sources/trending.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -27,9 +28,41 @@ type SyncPayload = {
     pctChangeWeek: number;
     history: { day: string; mentions: number }[];
     references: { sourceName: string; title: string; url: string; postedAt: string; snippet?: string | null; upvotes?: number | null }[];
+    summary?: string;
+    whyItMatters?: string;
   }[];
   pipelineRun: { sourcesChecked: number; postsRead: number };
 };
+
+/**
+ * Generate-once-cache-forever: reads TrendDefinition.summary/whyItMatters,
+ * and only calls the model when either is still missing — most daily runs
+ * this is just the findUnique, no model call. Sample titles come from the
+ * references already built for this trend (translated, so always English)
+ * rather than a separate query. Returns undefined fields (not a thrown
+ * error) when generation isn't possible yet (no API key, no references),
+ * so a sync never regresses a previously-cached value — see SyncTrend's
+ * conditional-update handling on the receiving end.
+ */
+async function ensureTrendContext(trendName: string, tag: string, sampleTitles: string[]) {
+  const def = await prisma.trendDefinition.findUnique({ where: { name: trendName } });
+  if (def?.summary && def?.whyItMatters) {
+    return { summary: def.summary, whyItMatters: def.whyItMatters };
+  }
+
+  const generated = await generateTrendContext(trendName, tag, sampleTitles);
+  if (!generated) {
+    return { summary: def?.summary ?? undefined, whyItMatters: def?.whyItMatters ?? undefined };
+  }
+
+  if (def) {
+    await prisma.trendDefinition.update({
+      where: { id: def.id },
+      data: { summary: generated.summary, whyItMatters: generated.whyItMatters },
+    });
+  }
+  return generated;
+}
 
 async function buildReferences(trendName: string) {
   const where = { trend: { name: trendName } };
@@ -129,13 +162,19 @@ export async function exportForMainApp() {
 
   const snapshots = await computeTrendSnapshots();
   const trends = await Promise.all(
-    snapshots.map(async (s) => ({
-      name: s.trendName,
-      tag: s.tag,
-      pctChangeWeek: s.pctChangeWeek,
-      history: s.history.map((h) => ({ day: h.day, mentions: h.mentions })),
-      references: await buildReferences(s.trendName),
-    })),
+    snapshots.map(async (s) => {
+      const references = await buildReferences(s.trendName);
+      const context = await ensureTrendContext(s.trendName, s.tag, references.map((r) => r.title));
+      return {
+        name: s.trendName,
+        tag: s.tag,
+        pctChangeWeek: s.pctChangeWeek,
+        history: s.history.map((h) => ({ day: h.day, mentions: h.mentions })),
+        references,
+        summary: context.summary,
+        whyItMatters: context.whyItMatters,
+      };
+    }),
   );
 
   const [sourcesChecked, postsRead] = await Promise.all([

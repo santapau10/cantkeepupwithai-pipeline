@@ -67,6 +67,12 @@ model TrendDefinition {
   name      String             @unique
   tag       String
   aliases   String             // JSON array of match strings
+  // Generated once by synthesize/context.ts and cached here — export.ts only
+  // fills these in when null, never regenerates, same "generate once, cache
+  // forever" pattern as ClusterCandidate's labeling. syncTaxonomy()'s upsert
+  // never touches these two columns, so a taxonomy.yaml edit can't blank them.
+  summary       String?
+  whyItMatters  String?
   mentions  PostTrendMention[]
 
   @@map("trend_definitions")
