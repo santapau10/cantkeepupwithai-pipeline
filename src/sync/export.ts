@@ -4,6 +4,7 @@ import path from "node:path";
 import { prisma } from "../lib/prisma.js";
 import { computeTrendSnapshots } from "../aggregate/snapshot.js";
 import { translateTitles } from "../taxonomy/translate.js";
+import { fetchTrendingRepos, type TrendingTool } from "../sources/trending.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const exportDir = path.join(here, "../../data/export");
@@ -156,4 +157,46 @@ export async function exportForMainApp() {
 
   const result = await res.json();
   return { payloadPath, trendCount: trends.length, synced: true, result };
+}
+
+/**
+ * Separate sync path for the Toolbox's "Trending" selector — run every 3
+ * days by its own cron (.github/workflows/trending.yml), independent of the
+ * daily trends/digest export above. Posts just `{ trendingTools }` to the
+ * same POST /api/pipeline/sync endpoint; the backend replaces its whole
+ * sourceType="trending" batch with whatever's sent here (see
+ * backend/src/routes/pipeline.ts) — no `trends`/`pipelineRun` in this
+ * payload, so it doesn't touch trend data or overwrite the daily ingest
+ * stats shown on the homepage ticker.
+ */
+export async function exportTrendingForMainApp() {
+  mkdirSync(exportDir, { recursive: true });
+
+  const trendingTools = await fetchTrendingRepos();
+
+  const payload: { trendingTools: TrendingTool[] } = { trendingTools };
+
+  const today = new Date().toISOString().slice(0, 10);
+  const payloadPath = path.join(exportDir, `trending-${today}.json`);
+  writeFileSync(payloadPath, JSON.stringify(payload, null, 2));
+
+  const syncUrl = process.env.WEB_SYNC_URL;
+  const syncKey = process.env.WEB_SYNC_API_KEY;
+  if (!syncUrl || !syncKey) {
+    return { payloadPath, toolCount: trendingTools.length, synced: false, reason: "WEB_SYNC_URL/WEB_SYNC_API_KEY not set" };
+  }
+
+  const res = await fetch(`${syncUrl}/api/pipeline/sync`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${syncKey}` },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Trending sync POST to ${syncUrl} failed: ${res.status} ${body}`);
+  }
+
+  const result = await res.json();
+  return { payloadPath, toolCount: trendingTools.length, synced: true, result };
 }

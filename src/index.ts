@@ -4,7 +4,7 @@ import { ingestConnector, type IngestResult } from "./sources/store.js";
 import type { FetchOptions } from "./sources/types.js";
 import { tagUntaggedPosts } from "./taxonomy/match.js";
 import { computeTrendSnapshots } from "./aggregate/snapshot.js";
-import { exportForMainApp } from "./sync/export.js";
+import { exportForMainApp, exportTrendingForMainApp } from "./sync/export.js";
 import { discoverNewTrends, listPendingCandidates } from "./discover/discover.js";
 
 const DEFAULT_BACKFILL_DAYS = 30;
@@ -87,6 +87,12 @@ async function discover() {
   return discoverNewTrends();
 }
 
+// Toolbox "Trending" refresh — every 3 days (.github/workflows/trending.yml),
+// independent of the daily ingest -> tag -> aggregate -> export path above.
+async function trending() {
+  return exportTrendingForMainApp();
+}
+
 async function review() {
   const candidates = await listPendingCandidates();
   if (candidates.length === 0) {
@@ -102,11 +108,12 @@ async function review() {
 }
 
 const STAGES = ["ingest", "tag", "aggregate", "export"] as const;
-// discover/review are weekly and manual-review steps — deliberately not part of "all",
-// which is meant to run daily. backfill is a one-off, manually-triggered
-// historical catch-up — see README § Backfill — never part of the daily/
-// weekly schedules either.
-const ALL_COMMANDS = [...STAGES, "discover", "review", "backfill", "all"];
+// discover/review are weekly and manual-review steps, trending is its own
+// every-3-days cron (.github/workflows/trending.yml) — deliberately not
+// part of "all", which is meant to run daily. backfill is a one-off,
+// manually-triggered historical catch-up — see README § Backfill — never
+// part of the daily/weekly schedules either.
+const ALL_COMMANDS = [...STAGES, "discover", "review", "backfill", "trending", "all"];
 
 /**
  * One-off historical catch-up: ingest (wide window) → tag → aggregate →
@@ -137,6 +144,7 @@ async function main() {
   if (command === "export" || command === "all") await logRun("export", exportStage);
   if (command === "discover") await logRun("discover", discover);
   if (command === "review") await review();
+  if (command === "trending") await logRun("trending", trending);
 
   if (!ALL_COMMANDS.includes(command as (typeof ALL_COMMANDS)[number])) {
     console.error(`Unknown command "${command}". Use: ${ALL_COMMANDS.join(" | ")}`);

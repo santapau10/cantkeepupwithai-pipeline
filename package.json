@@ -13,7 +13,8 @@
     "tag": "tsx src/index.ts tag",
     "discover": "tsx src/index.ts discover",
     "review": "tsx src/index.ts review",
-    "backfill": "tsx src/index.ts backfill"
+    "backfill": "tsx src/index.ts backfill",
+    "trending": "tsx src/index.ts trending"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
