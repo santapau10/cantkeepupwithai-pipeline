@@ -36,7 +36,9 @@ trends:
       - "ai agent skills"
       - "custom ai agent"
       - "agentic coding tool"
-      - "coding agent"
+      # Deliberately no bare "coding agent" alias: it matches any general AI
+      # coding-agent coverage (product comparisons, launches, cost pieces),
+      # not posts specifically about skill/harness architecture.
 
   - name: "MCP servers in production"
     tag: protocol
