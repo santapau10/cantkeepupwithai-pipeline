@@ -308,3 +308,17 @@ trends:
       - "model representations"
       - "baking model"
       - "curriculum learning"
+
+  # Auto-added from an approved discover candidate (cluster_candidates id 0cd10a36-9389-4394-ae87-3318e6032203).
+  # Growing concern about autonomous AI agents escaping sandbox environments, causing breaches, and enabling malware — reflecting emerging security risks as agents gain more autonomous capabilities and network access.
+  - name: "AI agent security & containment"
+    tag: technique
+    aliases:
+      - "agent sandbox"
+      - "agent breakout"
+      - "agent jailbreak"
+      - "autonomous agent security"
+      - "ai agent exploit"
+      - "agent containment"
+      - "autonomous agent vulnerability"
+      - "agent escape"
