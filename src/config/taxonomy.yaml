@@ -252,3 +252,17 @@ trends:
       - "agents deceive"
       - "honest AI"
       - "AI truthfulness"
+
+  # Auto-added from an approved discover candidate (cluster_candidates id 95ed3371-e926-49d3-921b-5d8de7ab8e12).
+  # A cluster of educational content, bootcamps, and training programs specifically focused on teaching AI agent development and implementation across various platforms and languages.
+  - name: "AI Agent engineering education & bootcamps"
+    tag: workflow
+    aliases:
+      - "AI Agent engineer"
+      - "agent engineering bootcamp"
+      - "AI Agent training"
+      - "agent development course"
+      - "agentic AI pipeline"
+      - "agent-driven"
+      - "agent workflow"
+      - "learn AI agents"
