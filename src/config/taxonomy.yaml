@@ -266,3 +266,17 @@ trends:
       - "agent-driven"
       - "agent workflow"
       - "learn AI agents"
+
+  # Auto-added from an approved discover candidate (cluster_candidates id 4ebd8e8e-6d57-4027-b217-3a3384718a2b).
+  # A coherent cluster of educational and instructional content focused on the practical construction, architecture, and deployment of AI agents, spanning from beginner tutorials to advanced frameworks and system design.
+  - name: "Building & deploying AI agents"
+    tag: workflow
+    aliases:
+      - "build ai agent"
+      - "ai agent tutorial"
+      - "ai agent from scratch"
+      - "agentic ai"
+      - "ai agent architecture"
+      - "ai agent framework"
+      - "how to build agent"
+      - "agent loop"
