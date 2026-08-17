@@ -280,3 +280,17 @@ trends:
       - "ai agent framework"
       - "how to build agent"
       - "agent loop"
+
+  # Auto-added from an approved discover candidate (cluster_candidates id f33fa54b-ad65-448d-ab59-df2305a67d3d).
+  # Clear cluster around building voice-interactive AI agents locally or without external APIs, emphasizing real-time performance, speech-to-speech capabilities, and minimal infrastructure requirements.
+  - name: "Local voice agents & real-time voice AI"
+    tag: technique
+    aliases:
+      - "voice agent"
+      - "voice ai"
+      - "speech-to-speech"
+      - "real-time voice"
+      - "local voice"
+      - "voice interface"
+      - "voice interaction"
+      - "voice-enabled agent"
