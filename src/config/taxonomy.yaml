@@ -322,3 +322,17 @@ trends:
       - "agent containment"
       - "autonomous agent vulnerability"
       - "agent escape"
+
+  # Auto-added from an approved discover candidate (cluster_candidates id f9f423b2-a05c-4ca7-b143-289b971afa19).
+  # Growing discussion around watermarking generated text as a detection/provenance mechanism, including both academic debate on its effectiveness and practical tools to remove or strip watermarks across vendors.
+  - name: "AI text watermarking & removal"
+    tag: technique
+    aliases:
+      - "watermark"
+      - "watermarking"
+      - "watermark removal"
+      - "text watermark"
+      - "ai watermark"
+      - "provenance mark"
+      - "strip watermark"
+      - "detect generated text"
