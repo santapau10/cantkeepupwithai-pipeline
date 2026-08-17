@@ -294,3 +294,17 @@ trends:
       - "voice interface"
       - "voice interaction"
       - "voice-enabled agent"
+
+  # Auto-added from an approved discover candidate (cluster_candidates id cfc69d7f-24aa-41f5-8e12-cf6bd8975a7d).
+  # A cluster of papers investigating how training data composition, pedagogical exposure, and knowledge baking processes shape LLM behavior, representations, and generalization—focusing on mechanistic understanding of what models learn and how.
+  - name: "LLM training dynamics & data influence"
+    tag: technique
+    aliases:
+      - "training data influence"
+      - "knowledge exposure"
+      - "model pretraining"
+      - "data composition"
+      - "training dynamics"
+      - "model representations"
+      - "baking model"
+      - "curriculum learning"
