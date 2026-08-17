@@ -350,3 +350,17 @@ trends:
       - "ai agent elementor"
       - "website building with ai agents"
       - "ai agent builds websites"
+
+  # Auto-added from an approved discover candidate (cluster_candidates id ed72ebc4-bf4b-4392-87e8-d3561e5776ca).
+  # A coherent trend around AI systems deployed as autonomous workers performing traditional job functions, distinct from AI-as-tool or AI-as-assistant framing.
+  - name: "AI employees & workplace automation"
+    tag: workflow
+    aliases:
+      - "ai employee"
+      - "ai worker"
+      - "autonomous ai workforce"
+      - "ai job displacement"
+      - "ai in workplace"
+      - "ai taking jobs"
+      - "ai labor"
+      - "workplace automation agent"
