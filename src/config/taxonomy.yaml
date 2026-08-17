@@ -336,3 +336,17 @@ trends:
       - "provenance mark"
       - "strip watermark"
       - "detect generated text"
+
+  # Auto-added from an approved discover candidate (cluster_candidates id 06e7f156-42a2-4c8e-bee0-1a93f99a7eda).
+  # A cluster of posts about using AI agents to automate or accelerate website building and web development workflows, positioning them as productivity multipliers for developers.
+  - name: "AI agents for web development"
+    tag: tool
+    aliases:
+      - "ai agent web development"
+      - "ai agent website builder"
+      - "ai agent site builder"
+      - "ai-powered web development"
+      - "ai agent wordpress"
+      - "ai agent elementor"
+      - "website building with ai agents"
+      - "ai agent builds websites"
