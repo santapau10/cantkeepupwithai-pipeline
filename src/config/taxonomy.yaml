@@ -117,16 +117,6 @@ trends:
       - "automated code review ai"
       - "ai reviews pull requests"
 
-  - name: "Prompt-engineering courses"
-    tag: meta
-    aliases:
-      # dev jargon
-      - "prompt engineering course"
-      - "prompt engineering certification"
-      # press phrasing
-      - "learn prompt engineering"
-      - "prompt engineering training"
-
   - name: "RAG-only architectures"
     tag: technique
     aliases:
