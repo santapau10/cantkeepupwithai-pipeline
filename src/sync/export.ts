@@ -30,6 +30,13 @@ type SyncPayload = {
     references: { sourceName: string; title: string; url: string; postedAt: string; snippet?: string | null; upvotes?: number | null }[];
     summary?: string;
     whyItMatters?: string;
+    // Distinct sources (not posts) that mentioned this trend in each
+    // window — see aggregate/snapshot.ts. Carried straight through, same
+    // "pipeline computes it, web just stores it" split as pctChangeWeek.
+    sourceBreadth7d: number;
+    sourceBreadth30d: number;
+    momentumZScore: number;
+    isBreaking: boolean;
   }[];
   pipelineRun: { sourcesChecked: number; postsRead: number };
 };
@@ -173,6 +180,10 @@ export async function exportForMainApp() {
         references,
         summary: context.summary,
         whyItMatters: context.whyItMatters,
+        sourceBreadth7d: s.sourceBreadth7d,
+        sourceBreadth30d: s.sourceBreadth30d,
+        momentumZScore: s.momentumZScore,
+        isBreaking: s.isBreaking,
       };
     }),
   );

@@ -1,11 +1,13 @@
 import { prisma } from "../lib/prisma.js";
 import type { FetchOptions, NormalizedPost, SourceConnector } from "./types.js";
+import { embedTexts } from "../discover/embed.js";
+import { cosineSimilarity } from "../discover/cluster.js";
 
 export type IngestResult = {
   sourceName: string;
   fetched: number;
   stored: number;
-  duplicatesSkipped?: number;
+  crossSourceGrouped?: number;
   error?: string;
 };
 
@@ -21,27 +23,47 @@ const DEDUP_WINDOW_DAYS = 7;
 const DEDUP_FORWARD_BUFFER_DAYS = 1;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// Same-event, not same-topic — much stricter than discover's 0.75 (topic
+// clustering, groups posts about the same general subject) or tag's 0.7
+// (post-title vs. trend-description matching). This is asking "is this the
+// same real-world story, paraphrased by a different outlet" — spot-checked
+// against real cross-source pairs on voyage-4-lite: same-event coverage
+// from different sources scored >=0.90, while same-topic-different-story
+// pairs (two unrelated posts both about, say, MCP auth) sat lower. A looser
+// threshold here would wrongly merge distinct stories into one group and
+// understate genuine cross-source fan-out — the opposite of what this
+// exists to measure.
+const SEMANTIC_DEDUP_THRESHOLD = 0.9;
+
+type CrossSourceCandidate = { id: string; title: string; postedAt: Date; storyGroupId: string | null };
+
 /**
- * Fetches one connector, upserts its Source row, dedups posts two ways:
- * (sourceId, externalId) for the same post re-seen by the same source, and
- * an exact case-insensitive title match against any OTHER source's posts
- * from around the same time — catches the same article showing up via two
- * feeds (e.g. HN linking straight to a blog post that's also in the RSS
- * feed, title carried over verbatim), which would otherwise double-count as
- * two separate mentions on the trend radar. Windowed on each post's own
- * `postedAt`, not on `Date.now()` — the daily path made those look
- * equivalent (an incoming post is always ~today), but `backfill` ingests
- * posts dated weeks ago, where anchoring to "now" would silently stop
- * catching cross-source duplicates for anything older than a week.
- * Same-story-different-wording (three outlets covering one event in their
- * own words) isn't caught here — that needs semantic comparison, not exact
- * match; not implemented yet.
+ * Fetches one connector and stores its posts, resolving two kinds of
+ * duplicate: (sourceId, externalId) for the same post re-seen by the same
+ * source (a true no-op, never stored twice), and the same real-world story
+ * showing up via a DIFFERENT source — checked first by exact
+ * case-insensitive title match, then (if VOYAGE_API_KEY is set and this
+ * isn't a backfill) by embedding similarity for paraphrased coverage of the
+ * same event.
  *
- * Batched, not per-post: this used to run two queries (cross-source dup
- * check, then existing-row check) *for every post*, sequentially — fine at
- * daily volume, but a 30-day backfill's ~6,000 HN posts alone meant 12,000
- * round trips to Neon and a 54-minute `ingest` stage. Two queries total per
- * connector call instead, everything else done in memory.
+ * Cross-source duplicates are no longer dropped. Every post is still
+ * stored, but a post recognized as covering a story already seen from
+ * another source gets that story's `storyGroupId` (propagated from the
+ * matched post, or minted from its id if this is the first repeat seen) —
+ * so `raw_posts.storyGroupId` naturally chains every source's coverage of
+ * one story together. Dropping used to throw away the exact signal this
+ * project wants: how many *independent* sources are talking about the same
+ * thing, not just how many posts exist. `aggregate/snapshot.ts` counts
+ * distinct story groups per trend per day (not raw post rows) so this
+ * doesn't inflate mention counts — three outlets on one story still counts
+ * as one story, but now the cross-source spread is queryable instead of
+ * silently discarded.
+ *
+ * Batched, not per-post — see the original comment history for why (a
+ * 30-day backfill's ~6,000 HN posts made per-post queries a 54-minute
+ * stage). The embedding pass adds real API calls, so it's skipped entirely
+ * during backfill (`options?.days` set) to keep that path bounded — the
+ * exact-title pass still runs regardless of backfill.
  */
 export async function ingestConnector(connector: SourceConnector, options?: FetchOptions): Promise<IngestResult> {
   const source = await prisma.source.upsert({
@@ -64,7 +86,7 @@ export async function ingestConnector(connector: SourceConnector, options?: Fetc
   }
 
   if (posts.length === 0) {
-    return { sourceName: connector.name, fetched: 0, stored: 0, duplicatesSkipped: 0 };
+    return { sourceName: connector.name, fetched: 0, stored: 0, crossSourceGrouped: 0 };
   }
 
   // One query covering every incoming post's own dedup window, instead of
@@ -77,7 +99,7 @@ export async function ingestConnector(connector: SourceConnector, options?: Fetc
   const [otherSourcePosts, existingForThisSource] = await Promise.all([
     prisma.rawPost.findMany({
       where: { postedAt: { gte: batchWindowStart, lte: batchWindowEnd }, sourceId: { not: source.id } },
-      select: { title: true, postedAt: true },
+      select: { id: true, title: true, postedAt: true, storyGroupId: true },
     }),
     prisma.rawPost.findMany({
       where: { sourceId: source.id, externalId: { in: posts.map((p) => p.externalId) } },
@@ -85,40 +107,87 @@ export async function ingestConnector(connector: SourceConnector, options?: Fetc
     }),
   ]);
 
-  const otherByTitle = new Map<string, Date[]>();
+  const otherByTitle = new Map<string, CrossSourceCandidate[]>();
   for (const p of otherSourcePosts) {
     const key = p.title.toLowerCase();
     const list = otherByTitle.get(key);
-    if (list) list.push(p.postedAt);
-    else otherByTitle.set(key, [p.postedAt]);
+    if (list) list.push(p);
+    else otherByTitle.set(key, [p]);
   }
   const existingExternalIds = new Set(existingForThisSource.map((p) => p.externalId));
 
-  const toInsert: NormalizedPost[] = [];
-  let duplicatesSkipped = 0;
+  type Pending = { post: NormalizedPost; storyGroupId: string | null };
+  const pending: Pending[] = [];
+  const unmatched: NormalizedPost[] = []; // still need the semantic pass
+
+  const withinWindow = (post: NormalizedPost, candidate: { postedAt: Date }) => {
+    const windowStart = post.postedAt.getTime() - DEDUP_WINDOW_DAYS * DAY_MS;
+    const windowEnd = post.postedAt.getTime() + DEDUP_FORWARD_BUFFER_DAYS * DAY_MS;
+    const t = candidate.postedAt.getTime();
+    return t >= windowStart && t <= windowEnd;
+  };
 
   for (const post of posts) {
     if (existingExternalIds.has(post.externalId)) continue; // posts are immutable once seen — no-op, not "stored"
 
-    const candidates = otherByTitle.get(post.title.toLowerCase());
-    const windowStart = post.postedAt.getTime() - DEDUP_WINDOW_DAYS * DAY_MS;
-    const windowEnd = post.postedAt.getTime() + DEDUP_FORWARD_BUFFER_DAYS * DAY_MS;
-    const hasCrossSourceDup = candidates?.some((d) => d.getTime() >= windowStart && d.getTime() <= windowEnd);
-    if (hasCrossSourceDup) {
-      duplicatesSkipped++;
-      continue;
+    const exactMatch = (otherByTitle.get(post.title.toLowerCase()) ?? []).find((c) => withinWindow(post, c));
+    if (exactMatch) {
+      pending.push({ post, storyGroupId: exactMatch.storyGroupId ?? exactMatch.id });
+    } else {
+      unmatched.push(post);
     }
+  }
 
-    toInsert.push(post);
+  let crossSourceGrouped = pending.length;
+
+  const canRunSemanticPass = unmatched.length > 0 && otherSourcePosts.length > 0 && Boolean(process.env.VOYAGE_API_KEY) && !options?.days;
+  if (canRunSemanticPass) {
+    try {
+      const [postEmbeddings, candidateEmbeddings] = await Promise.all([
+        embedTexts(unmatched.map((p) => p.title)),
+        embedTexts(otherSourcePosts.map((c) => c.title)),
+      ]);
+
+      for (let i = 0; i < unmatched.length; i++) {
+        const post = unmatched[i];
+        let best: CrossSourceCandidate | null = null;
+        let bestScore = -1;
+        for (let j = 0; j < otherSourcePosts.length; j++) {
+          const candidate = otherSourcePosts[j];
+          if (!withinWindow(post, candidate)) continue;
+          const score = cosineSimilarity(postEmbeddings[i], candidateEmbeddings[j]);
+          if (score > bestScore) {
+            bestScore = score;
+            best = candidate;
+          }
+        }
+
+        if (best && bestScore >= SEMANTIC_DEDUP_THRESHOLD) {
+          pending.push({ post, storyGroupId: best.storyGroupId ?? best.id });
+          crossSourceGrouped++;
+        } else {
+          pending.push({ post, storyGroupId: null });
+        }
+      }
+    } catch (err) {
+      // Same graceful-degradation pattern as tag's embedding fallback pass —
+      // a Voyage hiccup (rate limit, outage, missing billing) here must
+      // never block ingest. Falls back to storing these ungrouped; the
+      // exact-title pass above already ran regardless.
+      console.warn(`Semantic cross-source dedup skipped for ${connector.name}: ${(err as Error).message}`);
+      for (const post of unmatched) pending.push({ post, storyGroupId: null });
+    }
+  } else {
+    for (const post of unmatched) pending.push({ post, storyGroupId: null });
   }
 
   // skipDuplicates as a safety net against the (sourceId, externalId)
   // unique constraint, not the primary dedup mechanism — the check above
   // already filtered those out; this just covers a same-batch collision or
   // a race with a concurrent run.
-  const { count: stored } = toInsert.length
+  const { count: stored } = pending.length
     ? await prisma.rawPost.createMany({
-        data: toInsert.map((post) => ({
+        data: pending.map(({ post, storyGroupId }) => ({
           sourceId: source.id,
           externalId: post.externalId,
           title: post.title,
@@ -128,10 +197,11 @@ export async function ingestConnector(connector: SourceConnector, options?: Fetc
           score: post.score,
           commentCount: post.commentCount,
           postedAt: post.postedAt,
+          storyGroupId,
         })),
         skipDuplicates: true,
       })
     : { count: 0 };
 
-  return { sourceName: connector.name, fetched: posts.length, stored, duplicatesSkipped };
+  return { sourceName: connector.name, fetched: posts.length, stored, crossSourceGrouped };
 }

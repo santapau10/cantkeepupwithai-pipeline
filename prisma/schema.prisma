@@ -55,8 +55,20 @@ model RawPost {
   postedAt    DateTime
   fetchedAt   DateTime            @default(now())
   mentions    PostTrendMention[]
+  // Null means "not grouped with anything" — always resolve as
+  // `storyGroupId ?? id` in queries, never assume every row has this set.
+  // Set at ingest time (see sources/store.ts) when a post is recognized as
+  // the same real-world story as one already stored from a DIFFERENT
+  // source — either an exact title match or, with VOYAGE_API_KEY set, an
+  // embedding-similarity match above a strict threshold. The post is still
+  // stored (unlike the old drop-the-duplicate behavior) so cross-source
+  // fan-out stays visible; aggregate/snapshot.ts counts distinct story
+  // groups per trend per day instead of raw post rows, so a story covered
+  // by 3 outlets counts once, not three times.
+  storyGroupId String?
 
   @@unique([sourceId, externalId])
+  @@index([storyGroupId])
   @@map("raw_posts")
 }
 

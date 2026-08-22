@@ -61,7 +61,7 @@ async function ingest(options?: FetchOptions) {
   for (const connector of connectors) {
     const result = await ingestConnector(connector, options);
     results.push(result);
-    const dupeNote = result.duplicatesSkipped ? `, ${result.duplicatesSkipped} cross-source dupes skipped` : "";
+    const dupeNote = result.crossSourceGrouped ? `, ${result.crossSourceGrouped} cross-source grouped` : "";
     const status = result.error ? `SKIPPED (${result.error})` : `${result.stored} new / ${result.fetched} fetched${dupeNote}`;
     console.log(`  ${connector.name}: ${status}`);
   }
@@ -75,7 +75,16 @@ async function tag() {
 
 async function aggregate() {
   const snapshots = await computeTrendSnapshots();
-  console.table(snapshots.map((s) => ({ trend: s.trendName, mentions: s.mentions, "Δ week": `${s.pctChangeWeek.toFixed(0)}%` })));
+  console.table(
+    snapshots.map((s) => ({
+      trend: s.trendName,
+      mentions: s.mentions,
+      "Δ week": `${s.pctChangeWeek.toFixed(0)}%`,
+      sources: `${s.sourceBreadth7d}/${s.sourceBreadth30d}`,
+      "z-score": s.momentumZScore,
+      breaking: s.isBreaking ? "🔥" : "",
+    })),
+  );
   return { trendCount: snapshots.length };
 }
 
